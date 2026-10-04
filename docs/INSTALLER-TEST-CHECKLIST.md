@@ -29,6 +29,6 @@ The installer registers the tray for login autostart but does **not** start it i
 ## Additional tests still useful
 
 - [ ] Re-test **Change Proxy** end-to-end on a genuinely different proxy IP/port and confirm both redsocks and dnscrypt-proxy behavior.
-- [ ] Run `bash uninstall.sh` as a dedicated release test and verify that only the wrapper is removed while the separately installed xsqu1znt base remains.
+- [x] Run `bash uninstall.sh` as a dedicated release test and verify that only the wrapper is removed while the separately installed xsqu1znt base remains.
 - [ ] Repeat installation on a pristine/freshly installed Switchroot Noble OS where the dependencies have never been installed before.
 - [ ] Expand testing to other Switch/L4T kernels and Android phones.
