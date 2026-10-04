@@ -5,7 +5,8 @@
 - Adds a generic OpenVPN TCP Full Tunnel mode on top of the existing PdaNet HTTP proxy path.
 - Adds tray controls to choose a trusted TCP `.ovpn` profile, enter provider credentials, connect/disconnect Full Tunnel, and show tunnel status.
 - Full Tunnel prefers provider port 443 automatically when a TCP profile contains a port-443 remote, while preserving non-443 TCP profiles when no port-443 remote exists.
-- OpenVPN credentials are passed through a temporary mode-0600 file and are not stored in the repository or persistent PdaNet configuration.
+- OpenVPN credentials are passed through a temporary mode-0600 file for connection startup; optional remembered credentials are stored through the desktop Secret Service/keyring rather than in plaintext PdaNet configuration.
+- Adds optional saved Full Tunnel profile, secure keyring-backed credentials, auto-connect, profile replacement and a 'Forget Saved Full Tunnel' control.
 - Standard PdaNet L4T disconnect now also stops the Full Tunnel cleanly.
 - Manual proof-of-concept on the tested Switch OLED showed Discord voice changing from `No Route` without the tunnel to a working voice connection through `tun0`; stopping OpenVPN immediately returned Discord to `No Route`.
 - The tested proof used Proton VPN Free with an OpenVPN TCP profile. Proton is a tested provider, not a hardcoded dependency; the feature targets compatible OpenVPN TCP profiles.
