@@ -23,7 +23,7 @@ Confirmed working in a real session:
 
 Other Android phones and L4T devices may work, but the configuration above is what has actually been tested.
 
-> **Release-candidate note:** the manual compatibility path, one-shot installer, backend, tray Connect/Disconnect, Quit behavior and single-instance tray handling have all been tested on the configuration above. A clean-application install test is still being completed before the project is labeled stable. See `docs/INSTALLER-TEST-CHECKLIST.md`.
+> **v0.1.0 tested status:** a clean-application install from a fresh GitHub clone has been completed on the configuration above. Installer setup, login autostart, Connect, Disconnect, Quit, relaunch from the application menu and reconnect were all confirmed working. The OS itself was not freshly reinstalled, so previously installed Ubuntu dependency packages were still present.
 
 ## Why not just set the proxy in Ubuntu?
 
@@ -82,6 +82,8 @@ Default proxy values are:
 ```
 
 Use the values shown inside the PdaNet+ Android app if yours are different.
+
+> **Tray startup after install:** the installer registers PdaNet L4T for login autostart, but it does **not** launch the tray immediately in the current desktop session. After installation, either open **PdaNet L4T** once from the application menu/search, or log out/reboot. On the next login, the tray starts automatically.
 
 ## Daily use
 
