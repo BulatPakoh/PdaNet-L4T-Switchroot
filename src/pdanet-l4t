@@ -324,10 +324,22 @@ set_proxy() {
     log "Saved proxy: $1:$2"
 }
 
+turn_on_with_full_tunnel() {
+    local ip="${1:-}" port="${2:-}" source_config="${3:-}" auth_file="${4:-}"
+    (( EUID == 0 )) || die "Combined connection requires root. Use the tray app."
+    [[ -n "$ip" && -n "$port" && -n "$source_config" && -n "$auth_file" ]] || \
+        die "Usage: pdanet-l4t on-with-full-tunnel PROXY_IP PROXY_PORT CONFIG.ovpn AUTH_FILE"
+
+    turn_on "$ip" "$port"
+    log "Starting saved Full Tunnel..."
+    full_tunnel_on "$source_config" "$auth_file"
+}
+
 case "${1:-}" in
     on) shift; turn_on "$@" ;;
     off) turn_off ;;
     set-proxy) shift; set_proxy "$@" ;;
+    on-with-full-tunnel) shift; turn_on_with_full_tunnel "$@" ;;
     full-tunnel-on) shift; full_tunnel_on "$@" ;;
     full-tunnel-off) full_tunnel_off ;;
     full-tunnel-status) full_tunnel_status ;;
@@ -337,6 +349,7 @@ case "${1:-}" in
             '  pdanet-l4t on [PROXY_IP PROXY_PORT]' \
             '  pdanet-l4t off' \
             '  pdanet-l4t set-proxy PROXY_IP PROXY_PORT' \
+            '  pdanet-l4t on-with-full-tunnel PROXY_IP PROXY_PORT CONFIG.ovpn AUTH_FILE' \
             '  pdanet-l4t full-tunnel-on CONFIG.ovpn AUTH_FILE' \
             '  pdanet-l4t full-tunnel-off' \
             '  pdanet-l4t full-tunnel-status'
