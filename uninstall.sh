@@ -19,9 +19,9 @@ Without options:
   by this project. Shared Ubuntu packages are kept.
 
 Options:
-  --remove-packages  Also remove packages recorded as newly installed by
-                     PdaNet L4T. Packages that existed before installation
-                     are never included in this manifest.
+  --remove-packages  Also remove safe dependency candidates that were missing
+                     before PdaNet L4T installation and were then installed by
+                     the installer. Shared/core Ubuntu packages are not tracked.
   -y, --yes          Skip the package-removal confirmation.
   -h, --help         Show this help.
 EOF
@@ -75,7 +75,7 @@ if (( REMOVE_PACKAGES == 1 )) && (( ${#owned_packages[@]} > 0 )); then
         exit 1
     fi
 
-    echo "Packages recorded as added by PdaNet L4T:"
+    echo "Safe removable packages recorded as added by PdaNet L4T:"
     printf '  %s\n' "${owned_packages[@]}"
     echo
     if (( ASSUME_YES == 0 )); then
@@ -162,7 +162,7 @@ echo "PdaNet L4T removal complete."
 echo "Removed: wrapper, tray, autostart, xsqu1znt user files, PdaNet configs/services and routing state."
 if (( REMOVE_PACKAGES == 1 )); then
     if (( ${#owned_packages[@]} > 0 )); then
-        echo "Also removed the packages recorded as added by PdaNet L4T."
+        echo "Also removed the safe dependency packages recorded as added by PdaNet L4T."
     else
         echo "No installer-owned packages needed removal."
     fi
