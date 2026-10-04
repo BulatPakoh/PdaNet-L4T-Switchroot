@@ -170,7 +170,6 @@ WiFi connection established!
 
 No working PdaNet Internet connection was obtained through that tested WiFi workflow on this Switchroot system.
 
-An earlier run while accidentally still connected to a normal phone hotspot was excluded from the PdaNet result because it did not test the PdaNet WiFi Direct path.
 
 ### Code-path note
 

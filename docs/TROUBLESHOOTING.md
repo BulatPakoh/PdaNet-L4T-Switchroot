@@ -68,7 +68,71 @@ sudo apt update
 
 Early development builds tried to inspect iptables rules from the unprivileged GUI. That produces a false disconnected state because reading legacy NAT rules requires elevated privileges. The final tray uses a root-created state marker plus unprivileged service/port checks instead.
 
-## 7. Collect diagnostics
+## 7. Cannot reach the PdaNet proxy
+
+If Connect stops at:
+
+```text
+Cannot reach 192.168.49.1:8000
+```
+
+first confirm that Linux is connected to the phone's `DIRECT-...-PdaNet` Wi-Fi network and that PdaNet+ still shows the same proxy IP and port.
+
+The proxy can be tested directly without enabling PdaNet L4T:
+
+```bash
+curl -I --proxy http://192.168.49.1:8000 https://example.com
+```
+
+If the phone displays a different proxy address or port, update it from the tray with **Change Proxy** before connecting again.
+
+## 8. `iptables` reports `(nf_tables)` or warns about legacy tables
+
+On the tested system:
+
+```text
+iptables v1.8.10 (nf_tables)
+```
+
+while PdaNet L4T deliberately uses `iptables-legacy`.
+
+These are separate firewall backends/rulesets. A warning such as:
+
+```text
+# Warning: iptables-legacy tables present, use iptables-legacy to see them
+```
+
+does not by itself mean PdaNet L4T is broken.
+
+When inspecting PdaNet L4T's `PDANET` NAT chain on this system, use the legacy backend explicitly:
+
+```bash
+sudo iptables-legacy -t nat -L -n
+```
+
+Do not flush entire nftables or legacy tables as a troubleshooting shortcut; unrelated system firewall rules may exist.
+
+## 9. HTTPS validation fails and the connection rolls back
+
+The backend performs an HTTPS request after starting the proxy services and applying the routing rules.
+
+If that validation fails, PdaNet L4T intentionally removes its routing rules, stops its PdaNet-specific proxy services and leaves the state as disconnected rather than reporting a false success.
+
+Check the PdaNet Wi-Fi connection, proxy address, and service state, then run:
+
+```bash
+bash diagnose.sh
+```
+
+The rollback is a safety behavior, not a second connection mode.
+
+## 10. Tray does not appear immediately after installation
+
+The installer creates the application-menu entry and login autostart entry, but it does not launch the tray in the same desktop session automatically.
+
+After installation, either open **PdaNet L4T** once from the application menu/search or log out/reboot. The tray should start automatically on the next login.
+
+## 11. Collect diagnostics
 
 Run:
 
