@@ -1,8 +1,25 @@
 # PdaNet L4T
 
-A small compatibility wrapper and system-tray frontend for using **PdaNet+ Wi-Fi Direct** with legacy NVIDIA L4T / Switchroot Linux systems where the upstream Linux client's nftables NAT path does not work.
+A **Switchroot / legacy NVIDIA L4T compatibility layer** for using **PdaNet+ WiFi Direct Hotspot** on systems where a normal Linux PdaNet client hits routing problems on older kernels.
 
-This project does **not** reimplement PdaNet. It uses **xsqu1znt/PdaNetClientCLI-Linux** as the base engine (redsocks + dnscrypt-proxy + systemd integration), then replaces the incompatible Wi-Fi routing stage with `iptables-legacy` on affected L4T kernels.
+This is **not** a new general-purpose PdaNet Linux client and it is **not** a claim to be the first Linux implementation of PdaNet. The project exists for a narrower reason: on the tested Nintendo Switch OLED / Switchroot kernel, the upstream WiFi path expected nftables NAT support that the kernel did not provide, while `iptables-legacy` NAT + `REDIRECT` worked.
+
+PdaNet L4T uses **xsqu1znt/PdaNetClientCLI-Linux** as its base engine (redsocks + dnscrypt-proxy + systemd integration), then adds the compatibility layer, installer fixes, proxy configuration and a small system-tray frontend needed for the tested Switchroot environment.
+
+## What this project is — and is not
+
+**It is:**
+
+- a compatibility wrapper for older Switchroot / NVIDIA L4T kernels;
+- a tested `iptables-legacy` fallback for the missing nftables NAT path;
+- an automated installer for the exact fixes confirmed on the tested Switch OLED;
+- a lightweight tray frontend for Connect / Disconnect / Change Proxy / Status.
+
+**It is not:**
+
+- a replacement for every existing PdaNet Linux project;
+- a fully reverse-engineered implementation of the PdaNet protocol;
+- a claim that every Linux distribution, Android phone or network mode is supported.
 
 ## Tested configuration
 
@@ -21,7 +38,29 @@ Confirmed working in a real session:
 
 Other Android phones and L4T devices may work, but the configuration above is what has actually been tested.
 
-> **Release-candidate note:** the underlying manual compatibility path and tray behavior were confirmed on the tested Switch OLED. The bundled one-shot `install.sh` has been syntax-checked and built from those exact steps, but should receive a clean-install test before the project is labeled stable. See `docs/INSTALLER-TEST-CHECKLIST.md`.
+> **Release-candidate note:** the manual compatibility path, one-shot installer, backend, tray Connect/Disconnect, Quit behavior and single-instance tray handling have all been tested on the configuration above. A clean-application install test is still being completed before the project is labeled stable. See `docs/INSTALLER-TEST-CHECKLIST.md`.
+
+## Why not just set the proxy in Ubuntu?
+
+PdaNet WiFi Direct exposes an HTTP proxy, and manually setting that proxy in Ubuntu can be enough for software that **honors the desktop/system proxy setting**.
+
+That does not automatically cover every application. Some programs ignore the desktop proxy configuration entirely. This project uses transparent TCP redirection so ordinary applications can open TCP connections without each application being configured separately:
+
+```text
+Application
+    |
+normal TCP connection
+    |
+iptables-legacy REDIRECT
+    |
+redsocks
+    |
+PdaNet HTTP CONNECT proxy
+    |
+Android phone
+```
+
+DNS is handled through the PdaNet-specific dnscrypt-proxy configuration.
 
 ## What the installer automates
 
@@ -72,13 +111,42 @@ The tray menu also provides **Disconnect**, **Change Proxy**, **Show Status**, a
 
 ## Important networking limitation
 
-PdaNet Wi-Fi Direct mode in the upstream xsqu1znt client carries **TCP and DNS**, not arbitrary UDP or ICMP. This wrapper does not remove that underlying limitation. Web browsing, Git, `apt`, `curl`, `wget`, and normal TCP downloads are the main target. `ping` is not a valid connectivity test for this mode. Some games, voice/video applications, VPNs, or software requiring arbitrary UDP may not work.
+The currently tested **WiFi Direct proxy path** is confirmed for DNS, TCP and HTTPS. Raw UDP and ICMP tests on the tested Switchroot setup did **not** pass.
+
+That means:
+
+- web browsing, Git, `apt`, `curl`, `wget`, normal TCP downloads and many TCP-based applications are the main confirmed target;
+- `ping` is not a valid success test for this WiFi Direct mode;
+- some games, voice/video applications, VPNs or software that require arbitrary UDP may not work through this WiFi Direct path.
+
+**USB/TUN full-tunnel support is planned separately for v0.2** and is intentionally not mixed into the current v0.1 WiFi Direct compatibility work.
 
 ## Why this wrapper exists
 
-The tested Switchroot kernel reports `4.9.140-l4t`. The upstream Wi-Fi mode expects nftables NAT. On the tested system, loading `nft_chain_nat` fails, while `iptables-legacy` NAT and `REDIRECT` work correctly. The wrapper therefore keeps the upstream proxy/DNS services but installs an isolated `PDANET` chain in the legacy NAT table.
+The tested Switchroot kernel reports `4.9.140-l4t`. On that system:
+
+```text
+nft_chain_nat: unavailable
+iptables-legacy: available
+```
+
+The upstream WiFi routing path therefore could not use the expected nftables NAT support, while `iptables-legacy` NAT and `REDIRECT` worked correctly. PdaNet L4T keeps the upstream proxy/DNS services but installs an isolated `PDANET` chain in the legacy NAT table.
 
 See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for the exact failures observed during testing.
+
+## Related projects
+
+### xsqu1znt/PdaNetClientCLI-Linux
+
+This is the **upstream base used by PdaNet L4T**. It supplies the Linux PdaNet client, redsocks integration, dnscrypt-proxy integration, systemd units and USB support that this project builds on.
+
+PdaNet L4T does not vendor or claim ownership of that upstream code.
+
+### wtyler2505/pdanet-linux
+
+A separate, broader Linux PdaNet project with its own installer, GTK GUI, redsocks/iptables routing, WiFi/USB workflows and additional features. Its documentation targets general Debian/Ubuntu-style Linux usage and lists Linux Mint 22.2 Cinnamon as a tested platform.
+
+PdaNet L4T is not intended to replace it. The narrower focus here is the **Switchroot / legacy L4T compatibility gap**, including the confirmed `4.9.140-l4t` + `iptables-legacy` case above.
 
 ## Diagnostics
 
@@ -104,8 +172,8 @@ The uninstaller intentionally leaves the separately installed **xsqu1znt/PdaNetC
 
 ## Attribution and licensing
 
-PdaNet L4T is an independent compatibility wrapper and is not affiliated with PdaNet/FoxFi or the upstream xsqu1znt project.
+PdaNet L4T is an independent compatibility wrapper and is not affiliated with PdaNet/FoxFi, xsqu1znt, or wtyler2505.
 
-The upstream repository currently does not visibly include a license file in its repository root. For that reason this repository **does not vendor, copy, or relicense upstream source code**. `install.sh` clones the upstream repository directly and pins the tested commit. See [ATTRIBUTION.md](ATTRIBUTION.md).
+The upstream xsqu1znt repository currently does not visibly include a license file in its repository root. For that reason this repository **does not vendor, copy, or relicense upstream source code**. `install.sh` clones the upstream repository directly and pins the tested commit. See [ATTRIBUTION.md](ATTRIBUTION.md).
 
 The original code in this wrapper repository is released under the MIT License; see [LICENSE](LICENSE).
