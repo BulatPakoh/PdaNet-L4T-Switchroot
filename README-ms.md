@@ -127,3 +127,23 @@ Project ini tidak affiliated dengan PdaNet/FoxFi atau project upstream tersebut.
 ## Status ujian v0.1.0
 
 Clean-application install daripada fresh GitHub clone telah diuji pada setup di atas. Installer, autostart selepas reboot/login, Connect, Disconnect, Quit, buka semula daripada application search dan reconnect semuanya berjaya. OS tidak dipasang semula dari kosong, jadi dependency package Ubuntu yang pernah dipasang sebelum ini masih ada semasa ujian.
+
+## Uninstall
+
+Installer turut pasang command uninstall sendiri, jadi walaupun folder GitHub sudah dibuang kemudian, PdaNet L4T masih boleh dibersihkan dengan:
+
+```bash
+pdanet-l4t-uninstall
+```
+
+Mode biasa akan buang **PdaNet L4T + fail xsqu1znt yang dipasang oleh project ini**: tray, autostart, config, systemd service, upstream checkout dan routing state. Package Ubuntu yang dikongsi dengan sistem akan dikekalkan.
+
+Kalau mahu buang sekali package yang **baru ditambah semasa installer PdaNet L4T berjalan**:
+
+```bash
+pdanet-l4t-uninstall --remove-packages
+```
+
+Installer rekod package yang memang sudah ada sebelum installation. Jadi mode ini hanya mempertimbangkan package yang muncul semasa installation PdaNet L4T. Package asal Switchroot/Ubuntu tidak dimasukkan dalam manifest removal. Sebelum purge, script juga buat simulasi APT dan akan berhenti kalau APT mahu membuang package tambahan yang tidak direkod.
+
+Folder source GitHub tidak dipadam secara automatik. Kalau sudah tak mahu source repo, keluar dari folder itu dahulu dan padam secara manual.
