@@ -10,6 +10,7 @@
 - Final uninstall design removes PdaNet L4T plus the xsqu1znt files/configuration installed by this project while keeping shared Ubuntu packages by default.
 - Adds optional `--remove-packages` mode backed by a narrow PdaNet dependency allowlist, ownership captured from the actual PdaNet L4T APT transaction, and an APT safety simulation; unrelated concurrent package installs cannot enter the manifest.
 - Installer now sends only missing packages to APT, avoiding the side effect where already-installed automatic packages could be marked as manually installed.
+- Confirmed the package-state fix on Switchroot Noble: with all dependencies already present, APT is not invoked for package installation, no manual/auto package state is changed, and the ownership manifest remains empty.
 - Package removal also rejects manifest entries outside the built-in allowlist before any uninstall action, protecting against a corrupted or manually altered manifest.
 - Documents that the installer registers login autostart but does not launch the tray immediately in the same session.
 - Uses xsqu1znt/PdaNetClientCLI-Linux pinned to commit f20ae0e679f26d1703f6a99ffc1978fc7c7dd84f.
