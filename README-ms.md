@@ -1,6 +1,41 @@
 # PdaNet L4T — Nota Ringkas BM
 
-Ini ialah compatibility wrapper untuk PdaNet+ WiFi Direct pada Switchroot / NVIDIA L4T lama yang gagal menggunakan routing `nftables` daripada client Linux asal.
+Ini ialah **compatibility layer khas untuk Switchroot / NVIDIA L4T lama**, bukan cubaan membuat “PdaNet Linux pertama” atau menggantikan semua project PdaNet Linux yang sudah ada.
+
+Project ini wujud sebab pada Nintendo Switch OLED yang diuji, kernel `4.9.140-l4t` tidak mempunyai laluan nftables NAT yang diperlukan oleh client upstream, tetapi `iptables-legacy` masih boleh buat NAT + `REDIRECT` dengan betul.
+
+PdaNet L4T guna **xsqu1znt/PdaNetClientCLI-Linux** sebagai base, kemudian tambah fix L4T/Noble, `iptables-legacy` fallback, config proxy dan system tray.
+
+## Apa project ini buat
+
+- fokus pada Switchroot / legacy NVIDIA L4T;
+- automasi fix yang telah diuji pada Switch OLED;
+- transparent TCP redirect melalui redsocks;
+- DNS melalui dnscrypt-proxy;
+- tray Connect / Disconnect / Change Proxy / Status;
+- autostart dan single-instance tray.
+
+## Kenapa tak set proxy Ubuntu sahaja?
+
+Kalau set proxy PdaNet `192.168.49.1:8000` secara manual, browser atau app yang memang ikut system proxy mungkin terus boleh Internet.
+
+Masalahnya, bukan semua app ikut setting proxy desktop. Project ini redirect TCP secara transparent:
+
+```text
+App
+ ↓
+TCP biasa
+ ↓
+iptables-legacy
+ ↓
+redsocks
+ ↓
+PdaNet proxy
+ ↓
+Phone
+```
+
+Jadi user tak perlu configure proxy satu-satu untuk setiap app yang menggunakan TCP biasa.
 
 ## Setup yang telah betul-betul diuji
 
@@ -35,4 +70,25 @@ Installer akan buat setup xsqu1znt, patch compatibility Noble/L4T, pasang `iptab
 
 Kalau IP/port phone lain berbeza, guna **Change Proxy**.
 
-**Nota:** WiFi Direct mode ini membawa TCP + DNS, bukan arbitrary UDP/ICMP. Jangan guna `ping` sebagai ujian utama.
+## Limit WiFi Direct sekarang
+
+Yang telah confirmed pada setup Switchroot ini:
+
+- DNS ✅
+- TCP ✅
+- HTTPS ✅
+- raw UDP ❌
+- ICMP / ping ❌
+
+Jadi jangan anggap semua game atau app UDP akan jalan melalui WiFi Direct mode ini.
+
+**USB/TUN full-tunnel dirancang untuk v0.2** dan sengaja tidak dicampurkan ke v0.1 sekarang.
+
+## Related projects
+
+- **xsqu1znt/PdaNetClientCLI-Linux** — base yang project ini gunakan.
+- **wtyler2505/pdanet-linux** — project PdaNet Linux yang lebih general dengan installer, GUI GTK, redsocks/iptables dan WiFi/USB workflow.
+
+PdaNet L4T fokus pada gap yang lebih kecil: **Switchroot / legacy L4T**, terutamanya kes kernel `4.9.140-l4t` yang tiada `nft_chain_nat` tetapi masih ada `iptables-legacy`.
+
+Project ini tidak claim cipta PdaNet, tidak claim first Linux client, dan tidak affiliated dengan PdaNet/FoxFi atau project upstream tersebut.
