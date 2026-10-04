@@ -7,6 +7,7 @@
 - Full Tunnel prefers provider port 443 automatically when a TCP profile contains a port-443 remote, while preserving non-443 TCP profiles when no port-443 remote exists.
 - OpenVPN credentials are passed through a temporary mode-0600 file for connection startup; optional remembered credentials are stored through the desktop Secret Service/keyring rather than in plaintext PdaNet configuration.
 - Adds optional saved Full Tunnel profile, secure keyring-backed credentials, auto-connect, profile replacement and a 'Forget Saved Full Tunnel' control.
+- Auto-connect from the main tray Connect action now performs standard PdaNet and saved Full Tunnel startup in one privileged backend transaction, avoiding a second PolicyKit password prompt in the normal flow.
 - Standard PdaNet L4T disconnect now also stops the Full Tunnel cleanly.
 - Manual proof-of-concept on the tested Switch OLED showed Discord voice changing from `No Route` without the tunnel to a working voice connection through `tun0`; stopping OpenVPN immediately returned Discord to `No Route`.
 - The tested proof used Proton VPN Free with an OpenVPN TCP profile. Proton is a tested provider, not a hardcoded dependency; the feature targets compatible OpenVPN TCP profiles.
