@@ -1,6 +1,6 @@
 # v0.1.0 / v0.1.1 validation checklist
 
-Core v0.1.0 WiFi Direct installation and daily-use behavior has been validated on the tested Nintendo Switch OLED / Switchroot Ubuntu Noble environment. The v0.1.1 development line additionally validates the optional OpenVPN TCP Full Tunnel.
+Core v0.1.0 WiFi Direct installation and daily-use behavior has been validated on the tested Nintendo Switch OLED / Switchroot Ubuntu Noble environment. v0.1.1 additionally validates the optional OpenVPN TCP Full Tunnel.
 
 ## Confirmed
 
