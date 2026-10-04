@@ -3,14 +3,25 @@ import fcntl
 import os
 import subprocess
 import sys
+import tempfile
 
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QInputDialog, QMenu, QMessageBox, QSystemTrayIcon
+from PyQt5.QtWidgets import (
+    QApplication,
+    QFileDialog,
+    QInputDialog,
+    QLineEdit,
+    QMenu,
+    QMessageBox,
+    QSystemTrayIcon,
+)
 
 CONFIG = "/etc/pdanet-l4t.conf"
 BACKEND = "/usr/local/sbin/pdanet-l4t"
 STATE_FILE = "/run/pdanet-l4t.connected"
+FULL_TUNNEL_STATE = "/run/pdanet-l4t-full-tunnel.connected"
+FULL_TUNNEL_PID = "/run/pdanet-l4t-openvpn.pid"
 DEFAULT_IP = "192.168.49.1"
 DEFAULT_PORT = "8000"
 LOCK_PATH = os.path.expanduser("~/.cache/pdanet-l4t-tray.lock")
@@ -62,6 +73,18 @@ def is_connected():
     return os.path.exists(STATE_FILE) and service_active("pdanet-redsocks") and service_active("pdanet-dnscrypt") and local_port_open("12345") and local_port_open("5300")
 
 
+def full_tunnel_connected():
+    if not os.path.exists(FULL_TUNNEL_STATE):
+        return False
+    try:
+        with open(FULL_TUNNEL_PID, "r", encoding="utf-8") as handle:
+            pid = int(handle.read().strip())
+        with open(f"/proc/{pid}/comm", "r", encoding="utf-8") as handle:
+            return handle.read().strip() == "openvpn"
+    except (OSError, ValueError):
+        return False
+
+
 app = QApplication(sys.argv)
 app.setQuitOnLastWindowClosed(False)
 tray = QSystemTrayIcon()
@@ -74,6 +97,11 @@ menu.addSeparator()
 connect_action = menu.addAction("Connect")
 disconnect_action = menu.addAction("Disconnect")
 menu.addSeparator()
+full_tunnel_status_action = menu.addAction("Full Tunnel: Checking...")
+full_tunnel_status_action.setEnabled(False)
+full_tunnel_connect_action = menu.addAction("Connect Full Tunnel...")
+full_tunnel_disconnect_action = menu.addAction("Disconnect Full Tunnel")
+menu.addSeparator()
 change_proxy_action = menu.addAction("Change Proxy")
 show_status_action = menu.addAction("Show Status")
 menu.addSeparator()
@@ -83,10 +111,12 @@ tray.setContextMenu(menu)
 
 def update_status():
     ip, port = read_config()
+    base_online = is_connected()
+    full_online = full_tunnel_connected()
     proxy_action.setText(f"Proxy: {ip}:{port}")
-    if is_connected():
+
+    if base_online:
         tray.setIcon(QIcon.fromTheme("network-vpn"))
-        tray.setToolTip(f"PdaNet L4T\nConnected\n{ip}:{port}")
         status_action.setText("Status: Connected")
         connect_action.setEnabled(False)
         disconnect_action.setEnabled(True)
@@ -95,10 +125,21 @@ def update_status():
         if icon.isNull():
             icon = QIcon.fromTheme("network-vpn")
         tray.setIcon(icon)
-        tray.setToolTip(f"PdaNet L4T\nDisconnected\n{ip}:{port}")
         status_action.setText("Status: Disconnected")
         connect_action.setEnabled(True)
         disconnect_action.setEnabled(False)
+
+    if full_online:
+        full_tunnel_status_action.setText("Full Tunnel: Connected")
+        full_tunnel_connect_action.setEnabled(False)
+        full_tunnel_disconnect_action.setEnabled(True)
+        tray.setToolTip(f"PdaNet L4T\nConnected + Full Tunnel\n{ip}:{port}")
+    else:
+        full_tunnel_status_action.setText("Full Tunnel: Off")
+        full_tunnel_connect_action.setEnabled(base_online)
+        full_tunnel_disconnect_action.setEnabled(False)
+        state = "Connected" if base_online else "Disconnected"
+        tray.setToolTip(f"PdaNet L4T\n{state}\n{ip}:{port}")
 
 
 def connect_pdanet():
@@ -119,6 +160,70 @@ def disconnect_pdanet():
         tray.showMessage("PdaNet L4T", "Disconnected", QSystemTrayIcon.Information, 3000)
     else:
         QMessageBox.critical(None, "PdaNet L4T Error", result.stdout or "Disconnect failed.")
+
+
+def connect_full_tunnel():
+    if not is_connected():
+        QMessageBox.warning(None, "PdaNet L4T", "Connect standard PdaNet L4T mode first.")
+        return
+
+    config_path, _ = QFileDialog.getOpenFileName(
+        None,
+        "Choose OpenVPN TCP configuration",
+        os.path.expanduser("~/Downloads"),
+        "OpenVPN configuration (*.ovpn);;All files (*)",
+    )
+    if not config_path:
+        return
+
+    username, ok = QInputDialog.getText(None, "PdaNet L4T - Full Tunnel", "OpenVPN username:")
+    if not ok:
+        return
+    username = username.strip()
+    if not username:
+        QMessageBox.warning(None, "PdaNet L4T", "OpenVPN username cannot be empty.")
+        return
+
+    password, ok = QInputDialog.getText(None, "PdaNet L4T - Full Tunnel", "OpenVPN password:", QLineEdit.Password)
+    if not ok:
+        return
+    if not password:
+        QMessageBox.warning(None, "PdaNet L4T", "OpenVPN password cannot be empty.")
+        return
+
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
+    if not runtime_dir or not os.path.isdir(runtime_dir):
+        runtime_dir = os.path.expanduser("~/.cache")
+        os.makedirs(runtime_dir, exist_ok=True)
+
+    fd, auth_path = tempfile.mkstemp(prefix="pdanet-l4t-auth-", dir=runtime_dir, text=True)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(username + "\n" + password + "\n")
+
+        tray.showMessage("PdaNet L4T", "Starting Full Tunnel...", QSystemTrayIcon.Information, 2000)
+        result = run_command(["pkexec", BACKEND, "full-tunnel-on", config_path, auth_path])
+    finally:
+        try:
+            os.remove(auth_path)
+        except OSError:
+            pass
+
+    update_status()
+    if result.returncode == 0:
+        tray.showMessage("PdaNet L4T", "Full Tunnel connected", QSystemTrayIcon.Information, 4000)
+    else:
+        QMessageBox.critical(None, "PdaNet L4T Full Tunnel Error", result.stdout or "Full Tunnel connection failed.")
+
+
+def disconnect_full_tunnel():
+    result = run_command(["pkexec", BACKEND, "full-tunnel-off"])
+    update_status()
+    if result.returncode == 0:
+        tray.showMessage("PdaNet L4T", "Full Tunnel disconnected", QSystemTrayIcon.Information, 3000)
+    else:
+        QMessageBox.critical(None, "PdaNet L4T Full Tunnel Error", result.stdout or "Could not disconnect Full Tunnel.")
 
 
 def change_proxy():
@@ -143,7 +248,8 @@ def change_proxy():
 def show_status():
     ip, port = read_config()
     state = "CONNECTED" if is_connected() else "DISCONNECTED"
-    QMessageBox.information(None, "PdaNet L4T Status", f"Status: {state}\n\nProxy: {ip}:{port}")
+    tunnel = "CONNECTED" if full_tunnel_connected() else "OFF"
+    QMessageBox.information(None, "PdaNet L4T Status", f"Status: {state}\nFull Tunnel: {tunnel}\n\nProxy: {ip}:{port}")
 
 
 def quit_app():
@@ -156,6 +262,8 @@ def quit_app():
 
 connect_action.triggered.connect(connect_pdanet)
 disconnect_action.triggered.connect(disconnect_pdanet)
+full_tunnel_connect_action.triggered.connect(connect_full_tunnel)
+full_tunnel_disconnect_action.triggered.connect(disconnect_full_tunnel)
 change_proxy_action.triggered.connect(change_proxy)
 show_status_action.triggered.connect(show_status)
 quit_action.triggered.connect(quit_app)
