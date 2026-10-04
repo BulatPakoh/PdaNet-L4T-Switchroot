@@ -4,7 +4,7 @@ A **Switchroot / legacy NVIDIA L4T compatibility layer** for using **PdaNet+ WiF
 
 On the tested Nintendo Switch OLED / Switchroot Ubuntu Noble system, the upstream `xsqu1znt/PdaNetClientCLI-Linux` WiFi path expected nftables NAT support that the kernel did not provide, while `iptables-legacy` NAT + `REDIRECT` worked correctly.
 
-PdaNet L4T keeps the upstream redsocks and dnscrypt-proxy architecture, replaces the incompatible routing path with a tested `iptables-legacy` implementation, applies Noble/L4T compatibility fixes, and adds a lightweight system-tray frontend.
+PdaNet L4T keeps the upstream redsocks and dnscrypt-proxy architecture, replaces the incompatible routing path with a tested `iptables-legacy` implementation, applies Noble/L4T compatibility fixes, and adds a lightweight system-tray frontend. The `0.1.1` development line also adds an optional **OpenVPN TCP Full Tunnel** that carries application traffic, including UDP-capable application traffic, through a TCP OpenVPN session over the PdaNet HTTP proxy.
 
 Current validation is based on one Nintendo Switch OLED / Switchroot Ubuntu Noble system. Additional real-hardware reports are welcome.
 
@@ -23,6 +23,7 @@ Confirmed working on:
 - Proxy `192.168.49.1:8000`
 - Upstream base: `xsqu1znt/PdaNetClientCLI-Linux`
 - Tested upstream commit: `f20ae0e679f26d1703f6a99ffc1978fc7c7dd84f`
+- Full Tunnel tested provider: Proton VPN Free using an OpenVPN TCP profile (provider-specific test only; not a hardcoded dependency)
 
 Other phones, Switch models, L4T kernels and NVIDIA L4T devices may work, but are not currently claimed as confirmed.
 
@@ -123,7 +124,8 @@ The installer:
 - verifies `iptables-legacy` NAT + `REDIRECT`;
 - installs the routing wrapper and PyQt tray;
 - stores the PdaNet proxy configuration;
-- creates the application-menu and login-autostart entries.
+- creates the application-menu and login-autostart entries;
+- installs `openvpn` and `libsecret-tools` only when those packages are missing, enabling the optional Full Tunnel and desktop-keyring integration.
 
 Package ownership is tracked conservatively so unrelated Ubuntu packages are not removed by the uninstaller.
 
@@ -159,9 +161,48 @@ ONLINE
 
 The tray also provides **Disconnect**, **Change Proxy**, **Show Status**, and **Quit**.
 
+## Optional OpenVPN TCP Full Tunnel (0.1.1)
+
+Standard PdaNet L4T mode transparently covers TCP and DNS, but the tested PdaNet WiFi Direct proxy path does not provide arbitrary raw UDP. The optional Full Tunnel adds a second layer:
+
+```text
+Application traffic (TCP / UDP)
+        |
+       tun0
+        |
+OpenVPN TCP session
+        |
+PdaNet HTTP proxy
+        |
+Android phone
+```
+
+This does **not** turn the underlying PdaNet WiFi Direct path into a raw-UDP link. Instead, applications send traffic into `tun0`, and OpenVPN carries that traffic inside a TCP connection that can traverse the PdaNet HTTP proxy.
+
+Requirements:
+
+- a trusted OpenVPN **TCP** `.ovpn` profile from a VPN provider;
+- provider-issued OpenVPN credentials when the provider requires them;
+- standard PdaNet L4T mode connected first.
+
+First-time setup from the tray:
+
+1. Choose **Connect Full Tunnel**.
+2. Select a trusted TCP `.ovpn` profile.
+3. Enter the OpenVPN username and password.
+4. After a successful tunnel connection, optionally save the profile and credentials.
+5. If saved, credentials are stored through the desktop Secret Service/keyring rather than in the PdaNet configuration file.
+6. Optionally enable **Auto-connect Full Tunnel**.
+
+When a saved profile, saved keyring credential and auto-connect are available, the main **Connect** action starts standard PdaNet and the Full Tunnel in one privileged backend transaction. On the tested KDE session this reduced the normal connection flow to one PolicyKit password prompt. A desktop keyring/GPG unlock prompt may still appear separately after login or reboot, depending on the desktop wallet configuration.
+
+The installer provides the OpenVPN client engine and keyring tooling. It does **not** bundle Proton VPN, a VPN account, or a provider profile. Proton VPN Free was the tested provider; compatible OpenVPN TCP providers may work but are not claimed as confirmed until tested.
+
+The tray also provides **Disconnect Full Tunnel**, **Change Full Tunnel Profile...**, **Auto-connect Full Tunnel**, and **Forget Saved Full Tunnel**.
+
 ## Networking limitations
 
-Current WiFi Direct results:
+Standard WiFi Direct mode results:
 
 ```text
 DNS       PASS
@@ -171,13 +212,15 @@ Raw UDP   FAIL
 ICMP      FAIL
 ```
 
-Web browsing, Git, `apt`, `curl`, `wget` and normal TCP-based applications are the main confirmed targets.
+Web browsing, Git, `apt`, `curl`, `wget` and normal TCP-based applications are the main confirmed targets for standard mode. `ping` is not a valid success test for that path.
 
-`ping` is not a valid success test for this mode.
+On the tested system, Discord text, GIFs, image loading/download and image upload worked in standard mode, while Discord voice remained at `No Route`. A normal phone hotspot allowed Discord voice, confirming that the Discord/Vesktop/audio stack itself was functional.
 
-Applications requiring arbitrary UDP may not work. Games should be tested individually because some use TCP, relay services or fallback transports.
+With the optional OpenVPN TCP Full Tunnel active, Discord voice passed through `tun0`. Stopping the tunnel immediately returned Discord to `No Route`, and reconnecting the tunnel restored voice. This demonstrates UDP-capable application traffic through the Full Tunnel; it does not mean the underlying PdaNet WiFi Direct proxy gained raw UDP support.
 
-USB/TUN full-tunnel work is tracked separately for v0.2.
+Games and other UDP-heavy applications still require individual testing.
+
+Native PdaNet USB/TUN work remains tracked separately for v0.2. That roadmap item is distinct from the OpenVPN TCP Full Tunnel introduced in the 0.1.1 development line.
 
 ## Related projects
 
@@ -205,11 +248,11 @@ Detailed results are recorded in [docs/TESTED.md](docs/TESTED.md).
 
 ## Validation status
 
-The current `0.1.0` code has been validated from a clean **application state** using a fresh GitHub clone.
+Release `0.1.0` validated the standard WiFi Direct compatibility layer from a clean **application state** using a fresh GitHub clone.
 
-Confirmed tests include installer completion, login autostart, single-instance tray behavior, Connect, Disconnect, Quit, relaunch, reconnect, standalone uninstall and package-state-safe reinstall behavior.
+The current `0.1.1-dev` branch has additionally validated the optional OpenVPN TCP Full Tunnel on the same Switch OLED / Switchroot Noble system. Confirmed Full Tunnel checks include manual connect/disconnect/reconnect, Discord voice A/B behavior, secure keyring-backed credential storage, saved profile persistence, auto-connect after standard PdaNet connects, tray persistence across reboot, and the single-PolicyKit-prompt combined Connect flow.
 
-The operating system itself was not freshly installed before validation, so a pristine-OS dependency test remains useful additional coverage.
+The final `0.1.1-dev` installer was re-run successfully with required packages already present. A pristine-OS test where `openvpn` and `libsecret-tools` are absent before installation remains useful additional dependency coverage and is not claimed as completed.
 
 See [docs/INSTALLER-TEST-CHECKLIST.md](docs/INSTALLER-TEST-CHECKLIST.md).
 
@@ -221,7 +264,7 @@ Run:
 bash diagnose.sh
 ```
 
-Useful diagnostic data includes kernel, architecture, distro, iptables backend, `iptables-legacy` availability, proxy service versions, service state, listening ports and the pinned upstream commit.
+Useful diagnostic data includes kernel, architecture, distro, iptables backend, `iptables-legacy` availability, proxy service versions, standard connection state, Full Tunnel state, `tun0` state, Secret Service availability, saved auto-connect state and the pinned upstream commit. The diagnostic script does not print saved OpenVPN credentials.
 
 Review the output before posting it publicly.
 
@@ -229,7 +272,7 @@ Review the output before posting it publicly.
 
 Real-hardware reports are welcome, including successful results.
 
-Useful information includes the Switch/L4T device, Linux version, kernel, Android phone, PdaNet+ version, proxy address, installation result, Connect/Disconnect result and application/game behavior.
+Useful information includes the Switch/L4T device, Linux version, kernel, Android phone, PdaNet+ version, proxy address, installation result, standard Connect/Disconnect result, whether Full Tunnel was used, VPN provider/profile transport (TCP only; do not post credentials or private keys), and application/game behavior.
 
 Compatibility should be based on reproduced hardware tests rather than assumptions.
 
@@ -260,6 +303,8 @@ redsocks
 python3-pyqt5
 kdialog
 nftables
+openvpn
+libsecret-tools
 ```
 
 They are eligible only when the actual PdaNet L4T APT transaction recorded them as newly installed.
