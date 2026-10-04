@@ -60,6 +60,8 @@ bash install.sh
 
 Installer akan buat setup xsqu1znt, patch compatibility Noble/L4T, pasang `iptables-legacy` wrapper dan system tray secara automatik.
 
+> **Tray selepas install:** installer akan daftar PdaNet L4T untuk autostart masa login, tetapi tray **tidak terus muncul dalam session yang sama selepas installer habis**. Selepas install, sama ada buka **PdaNet L4T** sekali dari application menu/search, atau logout/restart. Pada login seterusnya tray akan muncul secara automatik.
+
 ## Guna hari-hari
 
 1. Phone: PdaNet+ → WiFi Direct Hotspot ON.
@@ -121,3 +123,7 @@ Buka GitHub issue dan beritahu apa yang jalan atau gagal supaya compatibility li
 Jadi memang ada overlap pada redsocks/iptables dan transparent routing, tetapi **scope utama PdaNet L4T ialah compatibility Switchroot / legacy NVIDIA L4T**, bukan general Linux desktop client.
 
 Project ini tidak affiliated dengan PdaNet/FoxFi atau project upstream tersebut.
+
+## Status ujian v0.1.0
+
+Clean-application install daripada fresh GitHub clone telah diuji pada setup di atas. Installer, autostart selepas reboot/login, Connect, Disconnect, Quit, buka semula daripada application search dan reconnect semuanya berjaya. OS tidak dipasang semula dari kosong, jadi dependency package Ubuntu yang pernah dipasang sebelum ini masih ada semasa ujian.
