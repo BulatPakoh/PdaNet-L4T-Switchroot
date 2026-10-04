@@ -30,30 +30,45 @@ else
     : > "$PACKAGE_PREVIOUS"
 fi
 
-info "Installing required PdaNet L4T packages"
-sudo apt-get update
-apt_log="$(mktemp)"
-sudo env LC_ALL=C apt-get install -y "${REQUIRED_APT_PACKAGES[@]}" 2>&1 | tee "$apt_log"
+info "Checking required PdaNet L4T packages"
+declare -a missing_required_packages=()
+for package in "${REQUIRED_APT_PACKAGES[@]}"; do
+    if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed'; then
+        missing_required_packages+=("$package")
+    fi
+done
 
-info "Recording only packages newly installed by this APT transaction"
 package_new="$(mktemp)"
 : > "$package_new"
-while IFS= read -r package; do
-    package="${package%%:*}"
-    case "$package" in
-        adb|dnscrypt-proxy|redsocks|python3-pyqt5|kdialog|nftables)
-            printf '%s\n' "$package" >> "$package_new"
-            ;;
-    esac
-done < <(
-    awk '
-        $0 == "The following NEW packages will be installed:" { capture=1; next }
-        capture && ($0 ~ /^The following / || $0 ~ /^[0-9]+ upgraded,/) { capture=0 }
-        capture { for (i=1; i<=NF; i++) print $i }
-    ' "$apt_log"
-)
+
+if (( ${#missing_required_packages[@]} > 0 )); then
+    info "Installing missing PdaNet L4T packages: ${missing_required_packages[*]}"
+    sudo apt-get update
+    apt_log="$(mktemp)"
+    sudo env LC_ALL=C apt-get install -y "${missing_required_packages[@]}" 2>&1 | tee "$apt_log"
+
+    info "Recording only packages newly installed by this APT transaction"
+    while IFS= read -r package; do
+        package="${package%%:*}"
+        case "$package" in
+            adb|dnscrypt-proxy|redsocks|python3-pyqt5|kdialog|nftables)
+                printf '%s\n' "$package" >> "$package_new"
+                ;;
+        esac
+    done < <(
+        awk '
+            $0 == "The following NEW packages will be installed:" { capture=1; next }
+            capture && ($0 ~ /^The following / || $0 ~ /^[0-9]+ upgraded,/) { capture=0 }
+            capture { for (i=1; i<=NF; i++) print $i }
+        ' "$apt_log"
+    )
+    rm -f "$apt_log"
+else
+    ok "All required APT packages are already installed; no package state changed."
+fi
+
 cat "$PACKAGE_PREVIOUS" "$package_new" | sed '/^[[:space:]]*$/d' | LC_ALL=C sort -u > "$PACKAGE_MANIFEST"
-rm -f "$apt_log" "$package_new" "$PACKAGE_PREVIOUS"
+rm -f "$package_new" "$PACKAGE_PREVIOUS"
 
 if [[ -d "$UPSTREAM_DIR/.git" ]]; then
     info "Refreshing xsqu1znt/PdaNetClientCLI-Linux"
