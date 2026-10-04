@@ -31,7 +31,9 @@ The installer registers the tray for login autostart but does **not** start it i
 - [ ] Re-test **Change Proxy** end-to-end on a genuinely different proxy IP/port and confirm both redsocks and dnscrypt-proxy behavior.
 - [x] Legacy normal-uninstall behavior was tested before the final uninstall redesign.
 - [x] Test the final `pdanet-l4t-uninstall` command after reinstall: wrapper + xsqu1znt files/config/services are removed while shared Ubuntu packages remain.
-- [ ] Test `pdanet-l4t-uninstall --remove-packages` allowlist-manifest safety path, including confirmation that ownership comes only from the PdaNet L4T APT transaction and unrelated packages cannot enter the manifest.
+- [x] Confirm `--remove-packages` with an empty ownership manifest performs full PdaNet cleanup without purging Ubuntu packages.
+- [ ] Re-test package ownership after installer fix: confirm it no longer marks already-installed packages as manually installed.
+- [ ] Test `pdanet-l4t-uninstall --remove-packages` with a real newly installed allowlisted dependency and confirm ownership comes only from the PdaNet L4T APT transaction.
 - [ ] Confirm a tampered/corrupt manifest containing a non-allowlisted package is rejected before any uninstall action.
 - [x] Confirm the installed uninstall command works after the GitHub source checkout is temporarily moved/renamed.
 - [x] Confirm the installed `pdanet-l4t-uninstall` command removes its own installed copy after completion; Bash command hashing may require `hash -r` before `command -v` reflects removal.
