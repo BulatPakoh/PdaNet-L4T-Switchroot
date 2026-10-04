@@ -17,6 +17,9 @@
 | L4T routing | iptables-legacy |
 | GUI | PyQt5 system tray |
 | Desktop | KDE Plasma / X11 |
+| OpenVPN | 2.6.19-0ubuntu0.24.04.4 |
+| Keyring helper | libsecret-tools 0.21.4-1build3 |
+| Full Tunnel provider test | Proton VPN Free, Singapore OpenVPN TCP profile |
 
 ## v0.1.0 clean-application install result
 
