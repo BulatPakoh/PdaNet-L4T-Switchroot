@@ -8,6 +8,16 @@ PACKAGE_MANIFEST="$STATE_DIR/installed-packages.txt"
 INSTALLED_UNINSTALLER="$HOME/.local/bin/pdanet-l4t-uninstall"
 REMOVE_PACKAGES=0
 ASSUME_YES=0
+readonly -a REMOVABLE_PACKAGE_CANDIDATES=(adb dnscrypt-proxy redsocks python3-pyqt5 kdialog nftables)
+
+is_allowed_package() {
+    local candidate="$1"
+    local allowed
+    for allowed in "${REMOVABLE_PACKAGE_CANDIDATES[@]}"; do
+        [[ "$candidate" == "$allowed" ]] && return 0
+    done
+    return 1
+}
 
 usage() {
     cat <<'EOF'
@@ -55,13 +65,27 @@ while (( $# > 0 )); do
 done
 
 declare -a owned_packages=()
+declare -a invalid_manifest_packages=()
 if (( REMOVE_PACKAGES == 1 )) && [[ -s "$PACKAGE_MANIFEST" ]]; then
     while IFS= read -r package; do
         [[ -n "$package" ]] || continue
+        if ! is_allowed_package "$package"; then
+            invalid_manifest_packages+=("$package")
+            continue
+        fi
         if dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed'; then
             owned_packages+=("$package")
         fi
     done < "$PACKAGE_MANIFEST"
+fi
+
+if (( REMOVE_PACKAGES == 1 )) && (( ${#invalid_manifest_packages[@]} > 0 )); then
+    echo "ERROR: Refusing package removal because the manifest contains entries"
+    echo "outside the built-in PdaNet package allowlist:"
+    printf '  %s\n' "${invalid_manifest_packages[@]}"
+    echo
+    echo "No packages or PdaNet files were removed."
+    exit 1
 fi
 
 if (( REMOVE_PACKAGES == 1 )) && (( ${#owned_packages[@]} > 0 )); then
