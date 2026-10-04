@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.1 - Unreleased
+## 0.1.1 - 2026-10-05 - OpenVPN TCP Full Tunnel
 
 - Adds a generic OpenVPN TCP Full Tunnel mode on top of the existing PdaNet HTTP proxy path.
 - Adds tray controls to choose a trusted TCP `.ovpn` profile, enter provider credentials, connect/disconnect Full Tunnel, and show tunnel status.
