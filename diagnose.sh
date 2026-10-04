@@ -112,7 +112,13 @@ fi
 
 echo
 echo "--- Services ---"
-systemctl --no-pager --full status pdanet-redsocks pdanet-dnscrypt 2>&1 | tail -n 40 || true
+for service in pdanet-redsocks pdanet-dnscrypt; do
+    printf '%-22s ' "$service"
+    systemctl is-active "$service" 2>/dev/null || true
+    systemctl show "$service" --no-pager \
+        -p LoadState -p ActiveState -p SubState -p MainPID 2>/dev/null \
+        | sed 's/^/  /' || true
+done
 
 echo
 echo "--- Listening ports ---"
