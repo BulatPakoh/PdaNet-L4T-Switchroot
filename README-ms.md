@@ -34,9 +34,9 @@ Pada setup Switchroot/KDE yang diuji:
 curl dengan --proxy secara terus   PASS
 KDE/KIO                            PASS
 
-curl biasa melalui KDE proxy       FAIL - DNS
-Chrome melalui KDE proxy           FAIL - DNS
-Chrome melalui PAC yang diuji      FAIL - tiada Internet
+curl biasa melalui KDE proxy       FAIL
+Chromium melalui KDE proxy         FAIL
+Chromium melalui PAC yang diuji    FAIL
 ```
 
 Keputusan ini khusus kepada setup yang diuji. Ia bukan bermaksud fungsi proxy KDE atau PdaNet rosak secara umum.
@@ -57,7 +57,7 @@ PdaNet proxy
 Phone
 ```
 
-Dengan PdaNet L4T aktif pada sistem yang sama, `curl` biasa dan Chrome berfungsi tanpa perlu set proxy untuk setiap aplikasi.
+Dengan PdaNet L4T aktif pada sistem yang sama, `curl` biasa dan Chromium berfungsi tanpa perlu set proxy untuk setiap aplikasi.
 
 ## Install
 
