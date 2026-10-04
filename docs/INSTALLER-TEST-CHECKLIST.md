@@ -31,7 +31,7 @@ The installer registers the tray for login autostart but does **not** start it i
 - [ ] Re-test **Change Proxy** end-to-end on a genuinely different proxy IP/port and confirm both redsocks and dnscrypt-proxy behavior.
 - [x] Legacy normal-uninstall behavior was tested before the final uninstall redesign.
 - [ ] Test the final `pdanet-l4t-uninstall` command after reinstall: wrapper + xsqu1znt files/config/services should be removed while shared Ubuntu packages remain.
-- [ ] Test `pdanet-l4t-uninstall --remove-packages` package-manifest safety path.
+- [ ] Test `pdanet-l4t-uninstall --remove-packages` allowlist-manifest safety path, including confirmation that unrelated packages cannot enter the manifest.
 - [ ] Confirm the installed uninstall command works after the GitHub source checkout is temporarily moved/renamed.
 - [ ] Repeat installation on a pristine/freshly installed Switchroot Noble OS where the dependencies have never been installed before.
 - [ ] Expand testing to other Switch/L4T kernels and Android phones.
