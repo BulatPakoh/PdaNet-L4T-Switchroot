@@ -13,3 +13,5 @@
 - Adds login autostart and duplicate-tray guard.
 - Adds rollback after failed HTTPS validation.
 - Adds diagnostics and troubleshooting documentation based on real test failures.
+- Fixes KDE tray Quit cleanup so the icon is hidden before the Qt event loop exits.
+- Adds an in-process file lock so autostart/session-restore races cannot create duplicate tray instances.
