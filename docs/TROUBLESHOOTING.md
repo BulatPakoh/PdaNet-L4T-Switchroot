@@ -57,12 +57,14 @@ The tested upstream commit defines systemd `ExecStart` paths using `/usr/bin/red
 
 ## 5. Browser/apt works but `ping` does not
 
-Expected for Wi-Fi Direct mode. The upstream client documents Wi-Fi mode as TCP + DNS through the Android HTTP proxy, without arbitrary ICMP/UDP. Test with HTTPS instead:
+Expected for **standard WiFi Direct mode**. The tested path carries TCP + DNS through the Android HTTP proxy and does not provide arbitrary ICMP/raw UDP. Test standard mode with HTTPS instead:
 
 ```bash
 curl -I https://google.com
 sudo apt update
 ```
+
+The optional OpenVPN TCP Full Tunnel can carry UDP-capable application traffic through `tun0`, but that does not turn the underlying PdaNet WiFi Direct proxy into a raw-UDP/ICMP link.
 
 ## 6. Tray says disconnected after a successful connection
 
@@ -132,7 +134,81 @@ The installer creates the application-menu entry and login autostart entry, but 
 
 After installation, either open **PdaNet L4T** once from the application menu/search or log out/reboot. The tray should start automatically on the next login.
 
-## 11. Collect diagnostics
+## 11. Full Tunnel button is disabled
+
+**Connect Full Tunnel** is only enabled after standard PdaNet L4T mode is online.
+
+Use the normal **Connect** action first. After standard mode reports connected, the Full Tunnel action becomes available.
+
+If auto-connect is enabled and a saved profile plus keyring credential are available, the normal **Connect** action starts both layers automatically.
+
+## 12. Full Tunnel reports authentication failure
+
+A provider may use separate OpenVPN credentials instead of the password used to sign in to its website or application.
+
+Use the OpenVPN credentials documented by the VPN provider. Do not post those credentials in an issue.
+
+PdaNet L4T requires a trusted OpenVPN **TCP** profile. Profiles using only UDP transport are rejected by the Full Tunnel backend.
+
+When a TCP profile contains a port-443 remote, the generated runtime profile prefers that remote because it was the confirmed working path on the tested setup. If no port-443 remote exists, the profile's existing TCP remotes are preserved.
+
+## 13. Discord voice shows `Checking Route` / `No Route`
+
+This was reproduced in standard PdaNet L4T mode on the tested Switchroot system.
+
+The tested A/B behavior was:
+
+```text
+Standard PdaNet mode        Discord voice: No Route
+Normal phone hotspot        Discord voice: PASS
+OpenVPN TCP Full Tunnel     Discord voice: PASS
+Stop Full Tunnel            Discord voice: No Route
+Reconnect Full Tunnel       Discord voice: PASS
+```
+
+This does not prove that every voice/game application will work through Full Tunnel. It confirms the tested Discord voice workload through `tun0`.
+
+## 14. Why does Ubuntu ask for a password?
+
+Routing and OpenVPN/TUN setup require privileged operations, so PdaNet L4T uses PolicyKit/`pkexec` instead of running the entire tray as root.
+
+With a saved Full Tunnel profile, saved keyring credential and **Auto-connect Full Tunnel** enabled, the main **Connect** action performs standard PdaNet + Full Tunnel startup in one privileged backend transaction. The final tested flow required one PolicyKit password prompt.
+
+Manually choosing **Connect Full Tunnel** later is a separate privileged action and can therefore request PolicyKit authorization again.
+
+A GPG/KWallet unlock prompt after login/reboot is separate from PolicyKit. It belongs to the desktop wallet/keyring configuration and may appear before saved Wi-Fi or Full Tunnel secrets can be read.
+
+## 15. Saved Full Tunnel profile is missing
+
+If the saved `.ovpn` file was moved, renamed or deleted, auto-connect is skipped.
+
+Use **Change Full Tunnel Profile...** and select a trusted replacement profile. The replacement is tested before it becomes the saved profile.
+
+## 16. Auto-connect is enabled but Full Tunnel does not start
+
+Check these conditions:
+
+- standard PdaNet L4T is connected;
+- the saved `.ovpn` file still exists;
+- the saved profile uses OpenVPN TCP;
+- the desktop Secret Service/keyring is available and unlocked;
+- the provider credentials are still valid.
+
+The tray intentionally does not auto-connect standard PdaNet immediately at desktop login. Auto-connect applies to the Full Tunnel **after standard PdaNet is connected**.
+
+## 17. OpenVPN log and runtime files
+
+The backend writes the current OpenVPN log to:
+
+```text
+/run/pdanet-l4t-openvpn.log
+```
+
+Runtime profile/auth files use mode `0600`. The temporary authentication file is removed after the OpenVPN startup result is known.
+
+Review logs before posting them publicly. Do not post provider credentials, private keys, keyring contents or private material embedded in a provider profile.
+
+## 18. Collect diagnostics
 
 Run:
 
@@ -140,4 +216,6 @@ Run:
 bash diagnose.sh
 ```
 
-Useful issue-report fields include kernel, architecture, distro, upstream commit, `iptables-legacy` availability, redsocks/dnscrypt versions, service status and whether ports `12345` and `5300` are listening.
+Useful issue-report fields include kernel, architecture, distro, upstream commit, `iptables-legacy` availability, redsocks/dnscrypt/OpenVPN versions, standard connection state, Full Tunnel state, `tun0` state, Secret Service availability and whether ports `12345` and `5300` are listening.
+
+The diagnostic script is designed not to print saved OpenVPN credentials.
