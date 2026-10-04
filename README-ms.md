@@ -1,10 +1,10 @@
 # PdaNet L4T — Nota Ringkas BM
 
-Ini ialah **compatibility layer khas untuk Switchroot / NVIDIA L4T lama**, bukan cubaan membuat “PdaNet Linux pertama” atau menggantikan semua project PdaNet Linux yang sudah ada.
+Ini ialah **compatibility layer khas untuk Switchroot / NVIDIA L4T lama** bagi menggunakan **PdaNet+ WiFi Direct Hotspot** pada kernel yang bermasalah dengan laluan NAT biasa.
 
-Project ini wujud sebab pada Nintendo Switch OLED yang diuji, kernel `4.9.140-l4t` tidak mempunyai laluan nftables NAT yang diperlukan oleh client upstream, tetapi `iptables-legacy` masih boleh buat NAT + `REDIRECT` dengan betul.
+Pada Nintendo Switch OLED yang diuji, kernel `4.9.140-l4t` tidak mempunyai sokongan nftables NAT yang diperlukan oleh client upstream, tetapi `iptables-legacy` masih boleh buat NAT + `REDIRECT` dengan betul.
 
-PdaNet L4T guna **xsqu1znt/PdaNetClientCLI-Linux** sebagai base, kemudian tambah fix L4T/Noble, `iptables-legacy` fallback, config proxy dan system tray.
+PdaNet L4T guna **xsqu1znt/PdaNetClientCLI-Linux** sebagai base, kemudian tambah fix L4T/Noble, `iptables-legacy` fallback, config proxy, installer automatik dan system tray.
 
 ## Apa project ini buat
 
@@ -91,4 +91,4 @@ Jadi jangan anggap semua game atau app UDP akan jalan melalui WiFi Direct mode i
 
 PdaNet L4T fokus pada gap yang lebih kecil: **Switchroot / legacy L4T**, terutamanya kes kernel `4.9.140-l4t` yang tiada `nft_chain_nat` tetapi masih ada `iptables-legacy`.
 
-Project ini tidak claim cipta PdaNet, tidak claim first Linux client, dan tidak affiliated dengan PdaNet/FoxFi atau project upstream tersebut.
+Project ini tidak affiliated dengan PdaNet/FoxFi atau project upstream tersebut.
