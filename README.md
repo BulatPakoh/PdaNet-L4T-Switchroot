@@ -1,25 +1,10 @@
 # PdaNet L4T
 
-A **Switchroot / legacy NVIDIA L4T compatibility layer** for using **PdaNet+ WiFi Direct Hotspot** on systems where a normal Linux PdaNet client hits routing problems on older kernels.
+A **Switchroot / legacy NVIDIA L4T compatibility layer** for using **PdaNet+ WiFi Direct Hotspot** on older kernels where the usual Linux routing path can fail.
 
-This is **not** a new general-purpose PdaNet Linux client and it is **not** a claim to be the first Linux implementation of PdaNet. The project exists for a narrower reason: on the tested Nintendo Switch OLED / Switchroot kernel, the upstream WiFi path expected nftables NAT support that the kernel did not provide, while `iptables-legacy` NAT + `REDIRECT` worked.
+On the tested Nintendo Switch OLED / Switchroot system, the upstream WiFi path expected nftables NAT support that the kernel did not provide, while `iptables-legacy` NAT + `REDIRECT` worked correctly. PdaNet L4T automates that compatibility path and adds a lightweight tray frontend for daily use.
 
-PdaNet L4T uses **xsqu1znt/PdaNetClientCLI-Linux** as its base engine (redsocks + dnscrypt-proxy + systemd integration), then adds the compatibility layer, installer fixes, proxy configuration and a small system-tray frontend needed for the tested Switchroot environment.
-
-## What this project is — and is not
-
-**It is:**
-
-- a compatibility wrapper for older Switchroot / NVIDIA L4T kernels;
-- a tested `iptables-legacy` fallback for the missing nftables NAT path;
-- an automated installer for the exact fixes confirmed on the tested Switch OLED;
-- a lightweight tray frontend for Connect / Disconnect / Change Proxy / Status.
-
-**It is not:**
-
-- a replacement for every existing PdaNet Linux project;
-- a fully reverse-engineered implementation of the PdaNet protocol;
-- a claim that every Linux distribution, Android phone or network mode is supported.
+PdaNet L4T uses **xsqu1znt/PdaNetClientCLI-Linux** as its base engine (redsocks + dnscrypt-proxy + systemd integration), then adds the Switchroot/L4T fixes, proxy configuration, installer logic and tray integration confirmed on the tested hardware.
 
 ## Tested configuration
 
@@ -146,7 +131,7 @@ PdaNet L4T does not vendor or claim ownership of that upstream code.
 
 A separate, broader Linux PdaNet project with its own installer, GTK GUI, redsocks/iptables routing, WiFi/USB workflows and additional features. Its documentation targets general Debian/Ubuntu-style Linux usage and lists Linux Mint 22.2 Cinnamon as a tested platform.
 
-PdaNet L4T is not intended to replace it. The narrower focus here is the **Switchroot / legacy L4T compatibility gap**, including the confirmed `4.9.140-l4t` + `iptables-legacy` case above.
+The focus here is the **Switchroot / legacy L4T compatibility gap**, including the confirmed `4.9.140-l4t` + `iptables-legacy` case above.
 
 ## Diagnostics
 
