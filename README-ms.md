@@ -4,7 +4,7 @@ Ini ialah **compatibility layer untuk Switchroot / NVIDIA L4T lama** bagi menggu
 
 Pada Nintendo Switch OLED yang diuji, kernel `4.9.140-l4t` tidak menyediakan `nft_chain_nat` yang diperlukan oleh laluan WiFi upstream, tetapi `iptables-legacy` NAT + `REDIRECT` masih berfungsi.
 
-PdaNet L4T menggunakan **xsqu1znt/PdaNetClientCLI-Linux** sebagai base, kemudian menambah compatibility fix untuk L4T/Noble, routing `iptables-legacy`, konfigurasi proxy, installer dan system tray ringan. Development line `0.1.1` turut menambah pilihan **OpenVPN TCP Full Tunnel** untuk membawa trafik aplikasi, termasuk trafik aplikasi berasaskan UDP, melalui sesi OpenVPN TCP di atas proxy HTTP PdaNet.
+PdaNet L4T menggunakan **xsqu1znt/PdaNetClientCLI-Linux** sebagai base, kemudian menambah compatibility fix untuk L4T/Noble, routing `iptables-legacy`, konfigurasi proxy, installer dan system tray ringan. Release `0.1.1` turut menambah pilihan **OpenVPN TCP Full Tunnel** untuk membawa trafik aplikasi, termasuk trafik aplikasi berasaskan UDP, melalui sesi OpenVPN TCP di atas proxy HTTP PdaNet.
 
 Validasi semasa berdasarkan satu Nintendo Switch OLED dengan Switchroot Ubuntu Noble. Report daripada hardware lain dialu-alukan.
 
@@ -163,7 +163,7 @@ Dengan OpenVPN TCP Full Tunnel aktif, Discord voice berjaya melalui `tun0`. Mema
 
 Game dan aplikasi UDP-heavy masih perlu diuji satu-satu.
 
-Native PdaNet USB/TUN masih dirancang berasingan untuk v0.2. Roadmap itu berbeza daripada OpenVPN TCP Full Tunnel dalam development line 0.1.1.
+Native PdaNet USB/TUN masih dirancang berasingan untuk v0.2. Roadmap itu berbeza daripada OpenVPN TCP Full Tunnel dalam v0.1.1.
 
 ## Related projects
 
@@ -189,9 +189,9 @@ Detail penuh direkod dalam [docs/TESTED.md](docs/TESTED.md).
 
 Release `0.1.0` telah mengesahkan standard WiFi Direct compatibility layer daripada clean **application state** menggunakan fresh GitHub clone.
 
-Branch semasa `0.1.1-dev` turut mengesahkan OpenVPN TCP Full Tunnel pada Switch OLED / Switchroot Noble yang sama. Ujian confirmed termasuk manual connect/disconnect/reconnect, A/B Discord voice, simpan credential melalui keyring, saved profile, auto-connect selepas standard PdaNet connected, persistence selepas reboot dan combined Connect flow dengan satu prompt PolicyKit.
+Release `0.1.1` turut mengesahkan OpenVPN TCP Full Tunnel pada Switch OLED / Switchroot Noble yang sama. Ujian confirmed termasuk manual connect/disconnect/reconnect, A/B Discord voice, simpan credential melalui keyring, saved profile, auto-connect selepas standard PdaNet connected, persistence selepas reboot dan combined Connect flow dengan satu prompt PolicyKit.
 
-Installer akhir `0.1.1-dev` berjaya dijalankan semula ketika dependency sudah tersedia. Pristine-OS test yang bermula tanpa `openvpn` dan `libsecret-tools` masih belum dianggap completed dan kekal sebagai coverage tambahan.
+Installer akhir `0.1.1` berjaya dijalankan semula ketika dependency sudah tersedia. Pristine-OS test yang bermula tanpa `openvpn` dan `libsecret-tools` masih belum dianggap completed dan kekal sebagai coverage tambahan.
 
 ## Uninstall
 
