@@ -84,11 +84,40 @@ Jadi jangan anggap semua game atau app UDP akan jalan melalui WiFi Direct mode i
 
 **USB/TUN full-tunnel dirancang untuk v0.2** dan sengaja tidak dicampurkan ke v0.1 sekarang.
 
+### Ujian game/network komuniti
+
+Raw UDP dan ICMP gagal pada setup ujian sekarang, tetapi itu **tak semestinya bermaksud semua game akan gagal**. Ada game yang guna TCP, campuran protocol, relay server atau fallback lain.
+
+Kalau kau test game atau app network-heavy, **bagitahu result walaupun ia berjaya**. Lagi bagus kalau report:
+
+- nama game/app;
+- login boleh atau tak;
+- matchmaking/join session boleh atau tak;
+- gameplay sebenar jalan atau tak;
+- voice chat jalan atau tak;
+- kernel Switchroot/L4T, model phone dan versi PdaNet+.
+
+Buka GitHub issue dan beritahu apa yang jalan atau gagal supaya compatibility list dibina daripada ujian hardware sebenar, bukan andaian.
+
 ## Related projects
 
 - **xsqu1znt/PdaNetClientCLI-Linux** — base yang project ini gunakan.
-- **wtyler2505/pdanet-linux** — project PdaNet Linux yang lebih general dengan installer, GUI GTK, redsocks/iptables dan WiFi/USB workflow.
+- **wtyler2505/pdanet-linux** — client PdaNet Linux yang lebih general dengan implementation sendiri, installer automatik, GUI GTK, redsocks/iptables, WiFi/USB workflow dan carrier-bypass features.
 
-PdaNet L4T fokus pada gap yang lebih kecil: **Switchroot / legacy L4T**, terutamanya kes kernel `4.9.140-l4t` yang tiada `nft_chain_nat` tetapi masih ada `iptables-legacy`.
+### Beza dengan wtyler2505/pdanet-linux
+
+**wtyler2505/pdanet-linux** fokus pada pengalaman PdaNet untuk Linux general, khususnya distro Debian/Ubuntu-style; README dia senaraikan Linux Mint 22.2 Cinnamon sebagai platform yang diuji.
+
+**PdaNet L4T** pula fokus pada masalah yang kita reproduce sendiri pada Switchroot:
+
+- Nintendo Switch OLED + Switchroot Ubuntu Noble;
+- kernel `4.9.140-l4t`;
+- `nft_chain_nat` tak tersedia;
+- `iptables-legacy` masih berfungsi;
+- fix dnscrypt-proxy Noble 2.0.45;
+- fix path `/usr/bin` vs `/usr/sbin`;
+- lightweight tray untuk integration Switchroot.
+
+Jadi memang ada overlap pada redsocks/iptables dan transparent routing, tetapi **scope utama PdaNet L4T ialah compatibility Switchroot / legacy NVIDIA L4T**, bukan general Linux desktop client.
 
 Project ini tidak affiliated dengan PdaNet/FoxFi atau project upstream tersebut.
