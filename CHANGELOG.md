@@ -9,6 +9,7 @@
 - Confirmed the standalone uninstaller works with the GitHub source checkout moved aside, removes PdaNet L4T + xsqu1znt files/config/services while keeping shared Ubuntu packages, and deletes its own installed copy after completion.
 - Final uninstall design removes PdaNet L4T plus the xsqu1znt files/configuration installed by this project while keeping shared Ubuntu packages by default.
 - Adds optional `--remove-packages` mode backed by a narrow PdaNet dependency allowlist, pre-install presence checks and an APT safety simulation; unrelated packages installed concurrently cannot enter the manifest.
+- Package removal also rejects manifest entries outside the built-in allowlist before any uninstall action, protecting against a corrupted or manually altered manifest.
 - Documents that the installer registers login autostart but does not launch the tray immediately in the same session.
 - Uses xsqu1znt/PdaNetClientCLI-Linux pinned to commit f20ae0e679f26d1703f6a99ffc1978fc7c7dd84f.
 - Replaces incompatible nftables Wi-Fi routing with an isolated iptables-legacy NAT chain.
