@@ -5,6 +5,7 @@
 - Confirmed on Nintendo Switch OLED / Switchroot Ubuntu Noble / kernel 4.9.140-l4t.
 - Clean-application installation from a fresh GitHub clone completed successfully.
 - Confirmed login/reboot autostart, Connect, Disconnect, Quit, application-menu relaunch and reconnect.
+- Confirmed normal `bash uninstall.sh` removes the PdaNet L4T wrapper while preserving the separately installed xsqu1znt base and saved proxy config.
 - Documents that the installer registers login autostart but does not launch the tray immediately in the same session.
 - Uses xsqu1znt/PdaNetClientCLI-Linux pinned to commit f20ae0e679f26d1703f6a99ffc1978fc7c7dd84f.
 - Replaces incompatible nftables Wi-Fi routing with an isolated iptables-legacy NAT chain.
