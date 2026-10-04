@@ -7,8 +7,9 @@ BASE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="$HOME/.local/share/pdanet-l4t"
 UPSTREAM_DIR="$STATE_DIR/upstream/PdaNetClientCLI-Linux"
 PACKAGE_MANIFEST="$STATE_DIR/installed-packages.txt"
-PACKAGE_BEFORE="$STATE_DIR/packages-before.txt"
+PACKAGE_MISSING_BEFORE="$STATE_DIR/packages-missing-before.txt"
 PACKAGE_PREVIOUS="$STATE_DIR/installed-packages.previous"
+readonly -a REMOVABLE_PACKAGE_CANDIDATES=(adb dnscrypt-proxy redsocks python3-pyqt5 kdialog nftables)
 
 info() { printf '==> %s\n' "$*"; }
 ok() { printf '  OK  %s\n' "$*"; }
@@ -18,14 +19,19 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 command -v apt-get >/dev/null 2>&1 || die "This release currently targets Debian/Ubuntu/Switchroot systems using APT."
 command -v sudo >/dev/null 2>&1 || die "sudo is required."
 
-info "Recording packages already present before PdaNet L4T installation"
+info "Recording removable PdaNet dependency candidates that are missing before installation"
 mkdir -p "$STATE_DIR/upstream"
 if [[ -f "$PACKAGE_MANIFEST" ]]; then
     cp -f "$PACKAGE_MANIFEST" "$PACKAGE_PREVIOUS"
 else
     : > "$PACKAGE_PREVIOUS"
 fi
-dpkg-query -W -f='${binary:Package}\n' 2>/dev/null | LC_ALL=C sort -u > "$PACKAGE_BEFORE"
+: > "$PACKAGE_MISSING_BEFORE"
+for package in "${REMOVABLE_PACKAGE_CANDIDATES[@]}"; do
+    if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed'; then
+        printf '%s\n' "$package" >> "$PACKAGE_MISSING_BEFORE"
+    fi
+done
 
 info "Installing wrapper dependencies"
 sudo apt-get update
@@ -52,13 +58,17 @@ dnscrypt_bin="$(command -v dnscrypt-proxy || true)"
 [[ -n "$redsocks_bin" ]] || die "redsocks executable not found after upstream installation."
 [[ -n "$dnscrypt_bin" ]] || die "dnscrypt-proxy executable not found after upstream installation."
 
-info "Recording packages added by this installer"
-package_after="$(mktemp)"
+info "Recording safe removable packages added by this installer"
 package_new="$(mktemp)"
-dpkg-query -W -f='${binary:Package}\n' 2>/dev/null | LC_ALL=C sort -u > "$package_after"
-comm -13 "$PACKAGE_BEFORE" "$package_after" > "$package_new"
+: > "$package_new"
+while IFS= read -r package; do
+    [[ -n "$package" ]] || continue
+    if dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed'; then
+        printf '%s\n' "$package" >> "$package_new"
+    fi
+done < "$PACKAGE_MISSING_BEFORE"
 cat "$PACKAGE_PREVIOUS" "$package_new" | sed '/^[[:space:]]*$/d' | LC_ALL=C sort -u > "$PACKAGE_MANIFEST"
-rm -f "$package_after" "$package_new" "$PACKAGE_BEFORE" "$PACKAGE_PREVIOUS"
+rm -f "$package_new" "$PACKAGE_MISSING_BEFORE" "$PACKAGE_PREVIOUS"
 
 info "Applying L4T/Noble service-path compatibility"
 sudo sed -Ei "s|^ExecStart=.*redsocks.*|ExecStart=${redsocks_bin} -c /etc/redsocks-pdanet.conf|" /etc/systemd/system/pdanet-redsocks.service
