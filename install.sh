@@ -150,4 +150,5 @@ printf '\nInstallation complete.\n'
 printf '1. On Android: PdaNet+ -> WiFi Direct Hotspot -> ON\n'
 printf '2. Join that DIRECT-...-PdaNet Wi-Fi network in Linux.\n'
 printf '3. Open PdaNet L4T from the application menu or tray and choose Connect.\n'
-printf '4. Uninstall later with: pdanet-l4t-uninstall\n'\nprintf '\nUpstream base: xsqu1znt/PdaNetClientCLI-Linux @ %s\n' "$UPSTREAM_COMMIT"
+printf '4. Uninstall later with: pdanet-l4t-uninstall\n'
+printf '\nUpstream base: xsqu1znt/PdaNetClientCLI-Linux @ %s\n' "$UPSTREAM_COMMIT"
