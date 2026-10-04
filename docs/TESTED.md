@@ -43,6 +43,93 @@ This was a **clean application state**, not a freshly reinstalled OS. Ubuntu dep
 
 Package-state behavior was also re-tested after the installer was changed to send only missing packages to APT. With all required packages already present, the installer did not invoke APT package installation, did not change manual/automatic package state, and left the installer-owned package manifest empty.
 
+## v0.1.1 OpenVPN TCP Full Tunnel result
+
+The `0.1.1-dev` branch was tested on the same Switch OLED / Switchroot Noble system after the standard WiFi Direct mode had already been validated.
+
+The Full Tunnel architecture under test was:
+
+```text
+Application TCP / UDP
+        |
+       tun0
+        |
+OpenVPN TCP
+        |
+PdaNet HTTP proxy 192.168.49.1:8000
+        |
+Android phone
+```
+
+This is a layered workaround. It does not make the underlying PdaNet WiFi Direct path provide raw UDP. OpenVPN accepts application traffic through `tun0` and carries it inside a TCP session that can traverse the PdaNet HTTP proxy.
+
+Tested provider/profile:
+
+- Proton VPN Free;
+- Singapore OpenVPN TCP profile;
+- TCP remote port 443 selected when available;
+- provider-issued OpenVPN credentials.
+
+Proton is a tested provider only. It is not hardcoded into PdaNet L4T, and the Proton application is not installed by this project.
+
+### Manual tunnel proof
+
+Before the tray integration, the OpenVPN profile was tested manually with the PdaNet HTTP proxy added to a working copy.
+
+Observed sequence:
+
+- TCP connection to `192.168.49.1:8000`: **PASS**;
+- OpenVPN peer connection through the proxy: **PASS**;
+- `tun0` created: **PASS**;
+- address assigned on `tun0`: **PASS**;
+- default traffic split through the OpenVPN tunnel: **PASS**;
+- OpenVPN reported `Initialization Sequence Completed`: **PASS**.
+
+Using the normal Proton account password produced `AUTH_FAILED`, while the provider-issued OpenVPN credentials succeeded. No credential values are recorded in this repository.
+
+### Discord/Vesktop A/B test
+
+Discord behavior was tested using Vesktop 1.6.7 arm64. The tested Switchroot graphics stack required a separate Vesktop launch workaround; that graphics workaround is independent of PdaNet L4T networking.
+
+| Test | Standard PdaNet | Full Tunnel |
+|---|---:|---:|
+| Discord text load/send | PASS | PASS |
+| GIF | PASS | PASS |
+| Image load/download | PASS | PASS |
+| Image upload | PASS | PASS |
+| Discord voice | FAIL - `No Route` | PASS |
+
+A control test on a normal phone hotspot allowed Discord voice to connect successfully. This confirmed that the tested Vesktop/audio/network stack could establish Discord voice when the network path allowed it.
+
+With Full Tunnel active, Discord voice connected successfully. Stopping OpenVPN caused an immediate disconnect followed by `Checking Route` / `No Route`. Reconnecting the Full Tunnel restored voice.
+
+This is evidence of UDP-capable application traffic through `tun0`; it is not evidence that the underlying PdaNet WiFi Direct proxy gained raw UDP support.
+
+### Tray, keyring and auto-connect validation
+
+The final tested `0.1.1-dev` tray flow produced:
+
+| Check | Result |
+|---|---|
+| Full Tunnel controls appear in tray | PASS |
+| Select original trusted TCP `.ovpn` profile | PASS |
+| Manual Full Tunnel connect | PASS |
+| Manual Full Tunnel disconnect | PASS |
+| Manual reconnect | PASS |
+| Save credentials through Secret Service/KWallet | PASS |
+| No OpenVPN password stored in `full-tunnel.ini` | PASS |
+| Saved profile persists | PASS |
+| Auto-connect setting persists | PASS |
+| Reboot/login tray autostart | PASS |
+| After reboot, standard mode remains disconnected until user chooses Connect | PASS |
+| Main Connect starts standard mode + saved Full Tunnel | PASS |
+| Saved Full Tunnel reconnects without asking for provider credentials again | PASS |
+| Combined Connect requires one PolicyKit password prompt on the tested session | PASS |
+
+On the tested KDE/KWallet setup, a GPG/KWallet unlock prompt appeared after reboot when the desktop accessed saved network/keyring secrets. That prompt is separate from the PdaNet L4T PolicyKit authorization flow.
+
+The installer was re-run successfully after the Full Tunnel dependencies had already been installed. Because `openvpn` and `libsecret-tools` were already present before the final installer run, a pristine-OS test where those packages are initially absent remains unclaimed.
+
 ## Direct PdaNet proxy and KDE proxy tests
 
 These tests were performed while connected to the phone's PdaNet WiFi Direct network using proxy `192.168.49.1:8000`.
@@ -99,7 +186,7 @@ This is the practical behavior the compatibility layer is intended to provide: n
 
 ## Network protocol result
 
-The tested WiFi Direct proxy path produced:
+The tested **standard** WiFi Direct proxy path produced:
 
 | Protocol/use | Result |
 |---|---|
@@ -108,10 +195,13 @@ The tested WiFi Direct proxy path produced:
 | HTTPS | PASS |
 | Raw UDP/STUN test | FAIL |
 | ICMP/ping | FAIL |
+| Discord voice | FAIL - `No Route` |
 
-The current WiFi Direct mode should therefore not be described as a general full-IP tunnel.
+Standard mode should therefore not be described as a general full-IP tunnel.
 
-A failed `ping` is expected and is not a valid Internet success test for this mode.
+With the optional OpenVPN TCP Full Tunnel active, application traffic routed through `tun0` successfully supported the tested Discord voice workload. Direct raw UDP and ICMP capability of the underlying PdaNet WiFi Direct proxy remains unchanged.
+
+A failed `ping` is expected for standard mode and is not a valid Internet success test for that path.
 
 ## Existing alternative test: wtyler2505/pdanet-linux
 
@@ -201,4 +291,6 @@ This confirmed that the comparison test had not broken the working PdaNet L4T se
 
 Other Switch models, other L4T kernel revisions, non-Switch NVIDIA L4T devices, other Android phone models, Wayland desktops, non-Debian distributions and non-default PdaNet proxy layouts should be considered **community testing targets**, not guaranteed support.
 
-A pristine/freshly installed Switchroot Noble OS where the dependencies have never previously been installed also remains useful additional installer coverage.
+A pristine/freshly installed Switchroot Noble OS where the dependencies have never previously been installed also remains useful additional installer coverage. In particular, the final `0.1.1-dev` installer has not yet been validated from a state where `openvpn` and `libsecret-tools` are both absent before installation.
+
+Compatible OpenVPN TCP providers other than the tested Proton VPN Free profile should also be considered community testing targets until reproduced on real hardware.
