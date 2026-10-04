@@ -8,10 +8,10 @@ STATE_DIR="$HOME/.local/share/pdanet-l4t"
 UPSTREAM_DIR="$STATE_DIR/upstream/PdaNetClientCLI-Linux"
 PACKAGE_MANIFEST="$STATE_DIR/installed-packages.txt"
 PACKAGE_PREVIOUS="$STATE_DIR/installed-packages.previous"
-readonly -a REMOVABLE_PACKAGE_CANDIDATES=(adb dnscrypt-proxy redsocks python3-pyqt5 kdialog nftables openvpn)
+readonly -a REMOVABLE_PACKAGE_CANDIDATES=(adb dnscrypt-proxy redsocks python3-pyqt5 kdialog nftables openvpn libsecret-tools)
 readonly -a REQUIRED_APT_PACKAGES=(
     adb bash coreutils curl dnscrypt-proxy gawk git grep iproute2 iptables
-    kdialog libc-bin nftables openvpn policykit-1 python3 python3-pyqt5 redsocks systemd util-linux
+    kdialog libc-bin libsecret-tools nftables openvpn policykit-1 python3 python3-pyqt5 redsocks systemd util-linux
 )
 
 info() { printf '==> %s\n' "$*"; }
@@ -51,7 +51,7 @@ if (( ${#missing_required_packages[@]} > 0 )); then
     while IFS= read -r package; do
         package="${package%%:*}"
         case "$package" in
-            adb|dnscrypt-proxy|redsocks|python3-pyqt5|kdialog|nftables|openvpn)
+            adb|dnscrypt-proxy|redsocks|python3-pyqt5|kdialog|nftables|openvpn|libsecret-tools)
                 printf '%s\n' "$package" >> "$package_new"
                 ;;
         esac
