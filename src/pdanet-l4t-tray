@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+import os
+import subprocess
+import sys
+
+from PyQt5.QtCore import QTimer
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QApplication, QInputDialog, QMenu, QMessageBox, QSystemTrayIcon
+
+CONFIG = "/etc/pdanet-l4t.conf"
+BACKEND = "/usr/local/sbin/pdanet-l4t"
+STATE_FILE = "/run/pdanet-l4t.connected"
+DEFAULT_IP = "192.168.49.1"
+DEFAULT_PORT = "8000"
+
+
+def read_config():
+    ip, port = DEFAULT_IP, DEFAULT_PORT
+    try:
+        with open(CONFIG, "r", encoding="utf-8") as handle:
+            for raw in handle:
+                line = raw.strip()
+                if line.startswith("PROXY_IP="):
+                    ip = line.split("=", 1)[1].strip()
+                elif line.startswith("PROXY_PORT="):
+                    port = line.split("=", 1)[1].strip()
+    except OSError:
+        pass
+    return ip, port
+
+
+def run_command(args):
+    try:
+        return subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+    except OSError as exc:
+        class Result:
+            returncode = 127
+            stdout = str(exc)
+        return Result()
+
+
+def service_active(name):
+    result = subprocess.run(["systemctl", "is-active", "--quiet", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    return result.returncode == 0
+
+
+def local_port_open(port):
+    result = subprocess.run(["ss", "-lnt"], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False)
+    return f":{port}" in result.stdout
+
+
+def is_connected():
+    return os.path.exists(STATE_FILE) and service_active("pdanet-redsocks") and service_active("pdanet-dnscrypt") and local_port_open("12345") and local_port_open("5300")
+
+
+app = QApplication(sys.argv)
+app.setQuitOnLastWindowClosed(False)
+tray = QSystemTrayIcon()
+menu = QMenu()
+status_action = menu.addAction("Status: Checking...")
+status_action.setEnabled(False)
+proxy_action = menu.addAction("Proxy: Checking...")
+proxy_action.setEnabled(False)
+menu.addSeparator()
+connect_action = menu.addAction("Connect")
+disconnect_action = menu.addAction("Disconnect")
+menu.addSeparator()
+change_proxy_action = menu.addAction("Change Proxy")
+show_status_action = menu.addAction("Show Status")
+menu.addSeparator()
+quit_action = menu.addAction("Quit")
+tray.setContextMenu(menu)
+
+
+def update_status():
+    ip, port = read_config()
+    proxy_action.setText(f"Proxy: {ip}:{port}")
+    if is_connected():
+        tray.setIcon(QIcon.fromTheme("network-vpn"))
+        tray.setToolTip(f"PdaNet L4T\nConnected\n{ip}:{port}")
+        status_action.setText("Status: Connected")
+        connect_action.setEnabled(False)
+        disconnect_action.setEnabled(True)
+    else:
+        icon = QIcon.fromTheme("network-offline")
+        if icon.isNull():
+            icon = QIcon.fromTheme("network-vpn")
+        tray.setIcon(icon)
+        tray.setToolTip(f"PdaNet L4T\nDisconnected\n{ip}:{port}")
+        status_action.setText("Status: Disconnected")
+        connect_action.setEnabled(True)
+        disconnect_action.setEnabled(False)
+
+
+def connect_pdanet():
+    ip, port = read_config()
+    tray.showMessage("PdaNet L4T", f"Connecting through {ip}:{port}...", QSystemTrayIcon.Information, 2000)
+    result = run_command(["pkexec", BACKEND, "on", ip, port])
+    update_status()
+    if result.returncode == 0:
+        tray.showMessage("PdaNet L4T", f"Internet connected\n{ip}:{port}", QSystemTrayIcon.Information, 4000)
+    else:
+        QMessageBox.critical(None, "PdaNet L4T Error", result.stdout or "Connection failed.")
+
+
+def disconnect_pdanet():
+    result = run_command(["pkexec", BACKEND, "off"])
+    update_status()
+    if result.returncode == 0:
+        tray.showMessage("PdaNet L4T", "Disconnected", QSystemTrayIcon.Information, 3000)
+    else:
+        QMessageBox.critical(None, "PdaNet L4T Error", result.stdout or "Disconnect failed.")
+
+
+def change_proxy():
+    old_ip, old_port = read_config()
+    ip, ok = QInputDialog.getText(None, "PdaNet L4T - Proxy", "PdaNet Proxy IP:", text=old_ip)
+    if not ok:
+        return
+    port, ok = QInputDialog.getText(None, "PdaNet L4T - Proxy", "PdaNet Proxy Port:", text=old_port)
+    if not ok:
+        return
+    ip, port = ip.strip(), port.strip()
+    result = run_command(["pkexec", BACKEND, "set-proxy", ip, port])
+    if result.returncode != 0:
+        QMessageBox.critical(None, "PdaNet L4T Error", result.stdout or "Could not save proxy.")
+        return
+    update_status()
+    answer = QMessageBox.question(None, "PdaNet L4T", f"Saved proxy:\n{ip}:{port}\n\nConnect now?", QMessageBox.Yes | QMessageBox.No)
+    if answer == QMessageBox.Yes:
+        connect_pdanet()
+
+
+def show_status():
+    ip, port = read_config()
+    state = "CONNECTED" if is_connected() else "DISCONNECTED"
+    QMessageBox.information(None, "PdaNet L4T Status", f"Status: {state}\n\nProxy: {ip}:{port}")
+
+
+connect_action.triggered.connect(connect_pdanet)
+disconnect_action.triggered.connect(disconnect_pdanet)
+change_proxy_action.triggered.connect(change_proxy)
+show_status_action.triggered.connect(show_status)
+quit_action.triggered.connect(app.quit)
+
+timer = QTimer()
+timer.timeout.connect(update_status)
+timer.start(2000)
+update_status()
+tray.show()
+sys.exit(app.exec_())
