@@ -15,7 +15,7 @@ fi
 
 echo
 echo "--- Commands ---"
-for cmd in iptables iptables-legacy redsocks dnscrypt-proxy curl pkexec python3; do
+for cmd in iptables iptables-legacy redsocks dnscrypt-proxy openvpn curl pkexec python3; do
     printf '%-18s %s\n' "$cmd" "$(command -v "$cmd" 2>/dev/null || echo MISSING)"
 done
 
