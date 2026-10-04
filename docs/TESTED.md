@@ -48,7 +48,7 @@ Package-state behavior was also re-tested after the installer was changed to sen
 
 ## v0.1.1 OpenVPN TCP Full Tunnel result
 
-The `0.1.1-dev` branch was tested on the same Switch OLED / Switchroot Noble system after the standard WiFi Direct mode had already been validated.
+Release `0.1.1` was tested on the same Switch OLED / Switchroot Noble system after the standard WiFi Direct mode had already been validated.
 
 The Full Tunnel architecture under test was:
 
@@ -110,7 +110,7 @@ This is evidence of UDP-capable application traffic through `tun0`; it is not ev
 
 ### Tray, keyring and auto-connect validation
 
-The final tested `0.1.1-dev` tray flow produced:
+The final tested `0.1.1` tray flow produced:
 
 | Check | Result |
 |---|---|
@@ -294,6 +294,6 @@ This confirmed that the comparison test had not broken the working PdaNet L4T se
 
 Other Switch models, other L4T kernel revisions, non-Switch NVIDIA L4T devices, other Android phone models, Wayland desktops, non-Debian distributions and non-default PdaNet proxy layouts should be considered **community testing targets**, not guaranteed support.
 
-A pristine/freshly installed Switchroot Noble OS where the dependencies have never previously been installed also remains useful additional installer coverage. In particular, the final `0.1.1-dev` installer has not yet been validated from a state where `openvpn` and `libsecret-tools` are both absent before installation.
+A pristine/freshly installed Switchroot Noble OS where the dependencies have never previously been installed also remains useful additional installer coverage. In particular, the final `0.1.1` installer has not yet been validated from a state where `openvpn` and `libsecret-tools` are both absent before installation.
 
 Compatible OpenVPN TCP providers other than the tested Proton VPN Free profile should also be considered community testing targets until reproduced on real hardware.
