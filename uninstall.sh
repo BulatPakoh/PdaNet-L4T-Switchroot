@@ -8,7 +8,7 @@ PACKAGE_MANIFEST="$STATE_DIR/installed-packages.txt"
 INSTALLED_UNINSTALLER="$HOME/.local/bin/pdanet-l4t-uninstall"
 REMOVE_PACKAGES=0
 ASSUME_YES=0
-readonly -a REMOVABLE_PACKAGE_CANDIDATES=(adb dnscrypt-proxy redsocks python3-pyqt5 kdialog nftables)
+readonly -a REMOVABLE_PACKAGE_CANDIDATES=(adb dnscrypt-proxy redsocks python3-pyqt5 kdialog nftables openvpn)
 
 is_allowed_package() {
     local candidate="$1"
@@ -161,7 +161,7 @@ if command -v nft >/dev/null 2>&1; then
     sudo nft delete table inet pdanet 2>/dev/null || true
 fi
 
-sudo rm -rf /run/pdanet-l4t.connected /run/pdanet-tproxy /run/pdanet-usb
+sudo rm -rf /run/pdanet-l4t.connected /run/pdanet-l4t-full-tunnel.connected /run/pdanet-l4t-openvpn.pid /run/pdanet-l4t-openvpn.log /run/pdanet-l4t-full-tunnel.ovpn /run/pdanet-l4t-openvpn.auth /run/pdanet-tproxy /run/pdanet-usb
 sudo rm -f /run/pdanet-usb-helper.log
 
 echo "==> Removing PdaNet L4T and upstream xsqu1znt files"
