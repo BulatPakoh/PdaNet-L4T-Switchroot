@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+CONFIG="/etc/pdanet-l4t.conf"
+REDSOCKS_CONF="/etc/redsocks-pdanet.conf"
+DNSCRYPT_CONF="/etc/dnscrypt-proxy-pdanet.toml"
+STATE_FILE="/run/pdanet-l4t.connected"
+
+log() { printf '%s\n' "$*"; }
+die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+
+valid_ip() {
+    local ip="$1" a b c d extra n
+    IFS=. read -r a b c d extra <<< "$ip"
+    [[ -z "${extra:-}" ]] || return 1
+    for n in "$a" "$b" "$c" "$d"; do
+        [[ "$n" =~ ^[0-9]+$ ]] || return 1
+        (( 10#$n >= 0 && 10#$n <= 255 )) || return 1
+    done
+}
+
+valid_port() {
+    [[ "$1" =~ ^[0-9]+$ ]] || return 1
+    (( 10#$1 >= 1 && 10#$1 <= 65535 ))
+}
+
+save_config() {
+    local ip="$1" port="$2"
+    valid_ip "$ip" || die "Invalid proxy IP: $ip"
+    valid_port "$port" || die "Invalid proxy port: $port"
+    printf 'PROXY_IP=%s\nPROXY_PORT=%s\n' "$ip" "$port" > "$CONFIG"
+    chmod 0644 "$CONFIG"
+}
+
+load_config() {
+    [[ -r "$CONFIG" ]] || die "Config not found: $CONFIG"
+    source "$CONFIG"
+    valid_ip "${PROXY_IP:-}" || die "Invalid PROXY_IP in $CONFIG"
+    valid_port "${PROXY_PORT:-}" || die "Invalid PROXY_PORT in $CONFIG"
+}
+
+find_iptables() {
+    if command -v iptables-legacy >/dev/null 2>&1; then
+        IPT="$(command -v iptables-legacy)"
+        return 0
+    fi
+    if command -v iptables >/dev/null 2>&1 && iptables -V 2>/dev/null | grep -qi legacy; then
+        IPT="$(command -v iptables)"
+        return 0
+    fi
+    die "iptables-legacy is required for the L4T compatibility mode."
+}
+
+configure_proxy_files() {
+    [[ -f "$REDSOCKS_CONF" ]] || die "Missing $REDSOCKS_CONF. Install xsqu1znt/PdaNetClientCLI-Linux first."
+    [[ -f "$DNSCRYPT_CONF" ]] || die "Missing $DNSCRYPT_CONF. Install xsqu1znt/PdaNetClientCLI-Linux first."
+
+    sed -Ei "s|^[[:space:]]*ip[[:space:]]*=.*;|  ip = ${PROXY_IP};|" "$REDSOCKS_CONF"
+    sed -Ei "s|^[[:space:]]*port[[:space:]]*=.*;|  port = ${PROXY_PORT};|" "$REDSOCKS_CONF"
+
+    sed -i '/^[[:space:]]*odoh_servers[[:space:]]*=/d' "$DNSCRYPT_CONF"
+    sed -i '/^[[:space:]]*http3[[:space:]]*=/d' "$DNSCRYPT_CONF"
+
+    if grep -q '^[[:space:]]*http_proxy[[:space:]]*=' "$DNSCRYPT_CONF"; then
+        sed -Ei "s|^[[:space:]]*http_proxy[[:space:]]*=.*|http_proxy = 'http://${PROXY_IP}:${PROXY_PORT}'|" "$DNSCRYPT_CONF"
+    else
+        printf "http_proxy = 'http://%s:%s'\n" "$PROXY_IP" "$PROXY_PORT" >> "$DNSCRYPT_CONF"
+    fi
+}
+
+remove_rules() {
+    find_iptables
+    while "$IPT" -t nat -C OUTPUT -j PDANET 2>/dev/null; do
+        "$IPT" -t nat -D OUTPUT -j PDANET
+    done
+    "$IPT" -t nat -F PDANET 2>/dev/null || true
+    "$IPT" -t nat -X PDANET 2>/dev/null || true
+}
+
+apply_rules() {
+    find_iptables
+    remove_rules
+    "$IPT" -t nat -N PDANET
+    "$IPT" -t nat -A PDANET -d 127.0.0.0/8 -j RETURN
+    "$IPT" -t nat -A PDANET -p udp --dport 53 -j REDIRECT --to-ports 5300
+    "$IPT" -t nat -A PDANET -p tcp --dport 53 -j REDIRECT --to-ports 5300
+    "$IPT" -t nat -A PDANET -d "${PROXY_IP}/32" -j RETURN
+    "$IPT" -t nat -A PDANET -d 0.0.0.0/8 -j RETURN
+    "$IPT" -t nat -A PDANET -d 10.0.0.0/8 -j RETURN
+    "$IPT" -t nat -A PDANET -d 100.64.0.0/10 -j RETURN
+    "$IPT" -t nat -A PDANET -d 169.254.0.0/16 -j RETURN
+    "$IPT" -t nat -A PDANET -d 172.16.0.0/12 -j RETURN
+    "$IPT" -t nat -A PDANET -d 192.168.0.0/16 -j RETURN
+    "$IPT" -t nat -A PDANET -d 224.0.0.0/4 -j RETURN
+    "$IPT" -t nat -A PDANET -d 240.0.0.0/4 -j RETURN
+    "$IPT" -t nat -A PDANET -p tcp -j REDIRECT --to-ports 12345
+    "$IPT" -t nat -I OUTPUT 1 -j PDANET
+}
+
+wait_services() {
+    local i
+    for i in $(seq 1 15); do
+        if ss -lntup | grep -q ':12345' && ss -lntup | grep -q ':5300'; then
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
+}
+
+proxy_test() {
+    timeout 5 bash -c "exec 3<>/dev/tcp/${PROXY_IP}/${PROXY_PORT}"
+}
+
+rollback() {
+    remove_rules || true
+    systemctl stop pdanet-redsocks pdanet-dnscrypt 2>/dev/null || true
+    rm -f "$STATE_FILE"
+}
+
+turn_on() {
+    (( EUID == 0 )) || die "Connect requires root. Use the tray app or: pkexec $0 on"
+    if [[ $# -eq 2 ]]; then
+        save_config "$1" "$2"
+    elif [[ $# -ne 0 ]]; then
+        die "Usage: pdanet-l4t on [PROXY_IP PROXY_PORT]"
+    fi
+
+    load_config
+    log "PdaNet L4T"
+    log "Proxy: ${PROXY_IP}:${PROXY_PORT}"
+
+    log "[1/5] Testing PdaNet proxy..."
+    proxy_test || die "Cannot reach ${PROXY_IP}:${PROXY_PORT}. Join the PdaNet Wi-Fi Direct network first."
+    log "OK"
+
+    log "[2/5] Configuring redsocks and DNS..."
+    configure_proxy_files
+    log "OK"
+
+    log "[3/5] Starting proxy services..."
+    systemctl stop redsocks 2>/dev/null || true
+    systemctl restart pdanet-redsocks pdanet-dnscrypt
+    wait_services || { rollback; die "Proxy services failed to open ports 12345 and 5300."; }
+    log "OK"
+
+    log "[4/5] Applying iptables-legacy routing..."
+    apply_rules
+    log "OK"
+
+    log "[5/5] Testing HTTPS..."
+    if timeout 15 curl --noproxy '*' -fsS https://example.com >/dev/null; then
+        printf 'PROXY_IP=%s\nPROXY_PORT=%s\n' "$PROXY_IP" "$PROXY_PORT" > "$STATE_FILE"
+        chmod 0644 "$STATE_FILE"
+        log "OK"
+    else
+        rollback
+        die "HTTPS test failed. Changes were rolled back."
+    fi
+
+    log "PdaNet L4T: ONLINE"
+}
+
+turn_off() {
+    (( EUID == 0 )) || die "Disconnect requires root. Use the tray app or: pkexec $0 off"
+    rollback
+    log "PdaNet L4T: OFFLINE"
+}
+
+set_proxy() {
+    (( EUID == 0 )) || die "Changing proxy requires root."
+    [[ $# -eq 2 ]] || die "Usage: pdanet-l4t set-proxy PROXY_IP PROXY_PORT"
+    save_config "$1" "$2"
+    log "Saved proxy: $1:$2"
+}
+
+case "${1:-}" in
+    on) shift; turn_on "$@" ;;
+    off) turn_off ;;
+    set-proxy) shift; set_proxy "$@" ;;
+    *)
+        printf '%s\n' 'Usage:' '  pdanet-l4t on [PROXY_IP PROXY_PORT]' '  pdanet-l4t off' '  pdanet-l4t set-proxy PROXY_IP PROXY_PORT'
+        exit 1
+        ;;
+esac
