@@ -137,11 +137,19 @@ def show_status():
     QMessageBox.information(None, "PdaNet L4T Status", f"Status: {state}\n\nProxy: {ip}:{port}")
 
 
+def quit_app():
+    timer.stop()
+    tray.hide()
+    tray.setContextMenu(None)
+    QApplication.processEvents()
+    app.quit()
+
+
 connect_action.triggered.connect(connect_pdanet)
 disconnect_action.triggered.connect(disconnect_pdanet)
 change_proxy_action.triggered.connect(change_proxy)
 show_status_action.triggered.connect(show_status)
-quit_action.triggered.connect(app.quit)
+quit_action.triggered.connect(quit_app)
 
 timer = QTimer()
 timer.timeout.connect(update_status)
