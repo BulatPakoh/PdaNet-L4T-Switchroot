@@ -106,6 +106,21 @@ That means:
 
 **USB/TUN full-tunnel support is planned separately for v0.2** and is intentionally not mixed into the current v0.1 WiFi Direct compatibility work.
 
+### Community game/network testing
+
+Raw UDP and ICMP failed in the current test setup, but that does **not** automatically prove that every game will fail. Some games may use TCP, mixed transport, relay services or fallback paths.
+
+If you test a game or network-heavy app, please report the result — **successful reports are useful too**. Include:
+
+- game/app name;
+- whether login works;
+- whether matchmaking/session join works;
+- whether actual gameplay works;
+- whether voice chat works;
+- your Switchroot/L4T kernel, Android phone and PdaNet+ version.
+
+Open a GitHub issue and tell us what worked or failed so the compatibility list can grow from real hardware tests instead of guesses.
+
 ## Why this wrapper exists
 
 The tested Switchroot kernel reports `4.9.140-l4t`. On that system:
@@ -129,9 +144,22 @@ PdaNet L4T does not vendor or claim ownership of that upstream code.
 
 ### wtyler2505/pdanet-linux
 
-A separate, broader Linux PdaNet project with its own installer, GTK GUI, redsocks/iptables routing, WiFi/USB workflows and additional features. Its documentation targets general Debian/Ubuntu-style Linux usage and lists Linux Mint 22.2 Cinnamon as a tested platform.
+A separate, broader Linux PdaNet project with its own reverse-engineered client, automated installer, GTK GUI, redsocks/iptables routing, WiFi/USB workflows and carrier-bypass features. Its documented target is general Debian/Ubuntu-style Linux, with Linux Mint 22.2 Cinnamon listed as a tested platform.
 
-The focus here is the **Switchroot / legacy L4T compatibility gap**, including the confirmed `4.9.140-l4t` + `iptables-legacy` case above.
+The practical difference is scope and architecture:
+
+| | wtyler2505/pdanet-linux | PdaNet L4T |
+|---|---|---|
+| Main goal | General Linux PdaNet client | Switchroot / legacy L4T compatibility |
+| Base | Its own implementation | Builds on xsqu1znt/PdaNetClientCLI-Linux |
+| Documented tested platform | Linux Mint 22.2 Cinnamon | Nintendo Switch OLED / Switchroot Ubuntu Noble |
+| Legacy L4T `4.9.140-l4t` | Not documented as a tested target | Confirmed |
+| Missing `nft_chain_nat` handling | Not documented as a target | Core reason this wrapper exists |
+| `iptables-legacy` fallback | Not documented in its current README | Explicitly tested and used |
+| GUI style | Full GTK application | Small PyQt tray utility |
+| Extra focus | Carrier-bypass / stealth features | L4T compatibility and minimal integration |
+
+So the overlap is real — both can use redsocks/iptables-style transparent routing — but **PdaNet L4T specifically targets the Switchroot kernel compatibility problem that was reproduced on real Switch OLED hardware**.
 
 ## Diagnostics
 
