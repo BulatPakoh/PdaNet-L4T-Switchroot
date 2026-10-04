@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 - Initial WiFi Direct version (unreleased)
+## 0.1.0 - 2026-10-04 - Initial WiFi Direct release
 
 - Confirmed on Nintendo Switch OLED / Switchroot Ubuntu Noble / kernel 4.9.140-l4t.
 - Clean-application installation from a fresh GitHub clone completed successfully.
