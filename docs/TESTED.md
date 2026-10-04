@@ -160,8 +160,8 @@ Results:
 | Test | Result |
 |---|---|
 | `kioclient5 cat https://example.com` | PASS |
-| normal `curl -I https://example.com` | FAIL - DNS resolution |
-| Chrome | FAIL - DNS resolution |
+| normal `curl -I https://example.com` | FAIL |
+| Chromium | FAIL |
 
 This shows that the desktop proxy path worked for KDE/KIO-aware traffic on the tested setup, but did not transparently cover every application.
 
@@ -173,16 +173,16 @@ KDE was switched to proxy auto-configuration using:
 http://192.168.49.1:8000
 ```
 
-Chrome still failed to obtain working Internet access on the tested setup.
+Chromium still failed to obtain working Internet access on the tested setup.
 
-This is only a result for the tested Switchroot Noble / KDE / Chrome configuration. It is not a claim that PdaNet PAC or KDE PAC support fails on other platforms.
+This is only a result for the tested Switchroot Noble / KDE / Chromium configuration. It is not a claim that PdaNet PAC or KDE PAC support fails on other platforms.
 
 ### PdaNet L4T A/B result
 
 With PdaNet L4T enabled on the same PdaNet WiFi Direct connection:
 
 - normal `curl -I https://example.com` passed;
-- Chrome worked;
+- Chromium worked;
 - the backend HTTPS validation passed.
 
 This is the practical behavior the compatibility layer is intended to provide: normal TCP/DNS handling without requiring each application to use the desktop proxy configuration directly.
