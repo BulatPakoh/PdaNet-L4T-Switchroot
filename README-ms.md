@@ -144,6 +144,6 @@ Kalau mahu buang sekali package yang **baru ditambah semasa installer PdaNet L4T
 pdanet-l4t-uninstall --remove-packages
 ```
 
-Installer rekod package yang memang sudah ada sebelum installation. Jadi mode ini hanya mempertimbangkan package yang muncul semasa installation PdaNet L4T. Package asal Switchroot/Ubuntu tidak dimasukkan dalam manifest removal. Sebelum purge, script juga buat simulasi APT dan akan berhenti kalau APT mahu membuang package tambahan yang tidak direkod.
+Untuk keselamatan, installer **tak compare seluruh database package sebelum dan selepas install**. Ia hanya track allowlist kecil dependency berkaitan PdaNet: `adb`, `dnscrypt-proxy`, `redsocks`, `python3-pyqt5`, `kdialog` dan `nftables`. Sesuatu package hanya direkod jika ia memang tiada sebelum PdaNet L4T dipasang dan wujud selepas installer selesai. Jadi package lain yang user install pada masa sama tak boleh tersalah masuk manifest. Package shared/core seperti `python3`, `git`, `curl`, `iptables` dan PolicyKit tidak akan auto-remove melalui mode ini. Sebelum purge, script juga buat simulasi APT dan akan berhenti jika APT mahu membuang package tambahan yang tidak direkod.
 
 Folder source GitHub tidak dipadam secara automatik. Kalau sudah tak mahu source repo, keluar dari folder itu dahulu dan padam secara manual.
