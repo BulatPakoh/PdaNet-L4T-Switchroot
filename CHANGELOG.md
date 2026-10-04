@@ -1,0 +1,15 @@
+# Changelog
+
+## 0.1.0-rc1 - Release candidate
+
+- Confirmed on Nintendo Switch OLED / Switchroot Ubuntu Noble / kernel 4.9.140-l4t.
+- Uses xsqu1znt/PdaNetClientCLI-Linux pinned to commit f20ae0e679f26d1703f6a99ffc1978fc7c7dd84f.
+- Replaces incompatible nftables Wi-Fi routing with an isolated iptables-legacy NAT chain.
+- Adds proxy IP/port configuration.
+- Updates both redsocks and dnscrypt-proxy when proxy settings change.
+- Handles Noble dnscrypt-proxy compatibility (`odoh_servers`, `http3`).
+- Patches upstream systemd executable paths to installed binaries.
+- Adds Connect / Disconnect / Change Proxy / Status system-tray UI.
+- Adds login autostart and duplicate-tray guard.
+- Adds rollback after failed HTTPS validation.
+- Adds diagnostics and troubleshooting documentation based on real test failures.
