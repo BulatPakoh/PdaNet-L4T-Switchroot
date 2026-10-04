@@ -5,6 +5,11 @@ CONFIG="/etc/pdanet-l4t.conf"
 REDSOCKS_CONF="/etc/redsocks-pdanet.conf"
 DNSCRYPT_CONF="/etc/dnscrypt-proxy-pdanet.toml"
 STATE_FILE="/run/pdanet-l4t.connected"
+FULL_TUNNEL_STATE="/run/pdanet-l4t-full-tunnel.connected"
+FULL_TUNNEL_PID="/run/pdanet-l4t-openvpn.pid"
+FULL_TUNNEL_LOG="/run/pdanet-l4t-openvpn.log"
+FULL_TUNNEL_CONFIG="/run/pdanet-l4t-full-tunnel.ovpn"
+FULL_TUNNEL_AUTH="/run/pdanet-l4t-openvpn.auth"
 
 log() { printf '%s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -112,6 +117,146 @@ proxy_test() {
     timeout 5 bash -c "exec 3<>/dev/tcp/${PROXY_IP}/${PROXY_PORT}"
 }
 
+full_tunnel_active() {
+    local pid
+    [[ -r "$FULL_TUNNEL_STATE" && -r "$FULL_TUNNEL_PID" ]] || return 1
+    pid="$(cat "$FULL_TUNNEL_PID" 2>/dev/null || true)"
+    [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+    kill -0 "$pid" 2>/dev/null || return 1
+    [[ -r "/proc/$pid/comm" ]] || return 1
+    grep -qx 'openvpn' "/proc/$pid/comm" 2>/dev/null
+}
+
+cleanup_full_tunnel_files() {
+    rm -f "$FULL_TUNNEL_STATE" "$FULL_TUNNEL_PID" "$FULL_TUNNEL_CONFIG" "$FULL_TUNNEL_AUTH"
+}
+
+stop_full_tunnel_process() {
+    local pid i
+    if [[ -r "$FULL_TUNNEL_PID" ]]; then
+        pid="$(cat "$FULL_TUNNEL_PID" 2>/dev/null || true)"
+        if [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null && [[ -r "/proc/$pid/comm" ]] && grep -qx 'openvpn' "/proc/$pid/comm" 2>/dev/null; then
+            kill "$pid" 2>/dev/null || true
+            for i in $(seq 1 10); do
+                kill -0 "$pid" 2>/dev/null || break
+                sleep 1
+            done
+            if kill -0 "$pid" 2>/dev/null; then
+                kill -KILL "$pid" 2>/dev/null || true
+            fi
+        fi
+    fi
+}
+
+prepare_full_tunnel_config() {
+    local source_config="$1"
+    local prefer_443=0
+
+    [[ -r "$source_config" ]] || die "Cannot read OpenVPN config: $source_config"
+    grep -Eq '^[[:space:]]*proto[[:space:]]+(tcp|tcp-client)([[:space:]]|$)' "$source_config" || die "Full Tunnel requires an OpenVPN TCP config (proto tcp or proto tcp-client)."
+    grep -Eq '^[[:space:]]*remote[[:space:]]+' "$source_config" || die "OpenVPN config has no remote server."
+
+    if grep -Eq '^[[:space:]]*remote[[:space:]]+[^[:space:]]+[[:space:]]+443([[:space:]]|$)' "$source_config"; then
+        prefer_443=1
+    fi
+
+    {
+        printf 'http-proxy %s %s\n' "$PROXY_IP" "$PROXY_PORT"
+        printf 'auth-user-pass %s\n' "$FULL_TUNNEL_AUTH"
+        awk -v prefer_443="$prefer_443" '
+            /^[[:space:]]*http-proxy([[:space:]]|$)/ { next }
+            /^[[:space:]]*http-proxy-option([[:space:]]|$)/ { next }
+            /^[[:space:]]*auth-user-pass([[:space:]]|$)/ { next }
+            /^[[:space:]]*daemon([[:space:]]|$)/ { next }
+            /^[[:space:]]*writepid([[:space:]]|$)/ { next }
+            /^[[:space:]]*log([[:space:]]|$)/ { next }
+            /^[[:space:]]*log-append([[:space:]]|$)/ { next }
+            /^[[:space:]]*remote[[:space:]]+/ {
+                if (prefer_443 == 1 && $3 != "443") next
+            }
+            { print }
+        ' "$source_config"
+    } > "$FULL_TUNNEL_CONFIG"
+    chmod 0600 "$FULL_TUNNEL_CONFIG"
+}
+
+full_tunnel_on() {
+    local source_config="${1:-}" auth_file="${2:-}" i pid config_name
+    (( EUID == 0 )) || die "Full Tunnel requires root. Use the tray app."
+    [[ -n "$source_config" && -n "$auth_file" ]] || die "Usage: pdanet-l4t full-tunnel-on CONFIG.ovpn AUTH_FILE"
+    [[ -r "$STATE_FILE" ]] || die "Connect standard PdaNet L4T mode first."
+    command -v openvpn >/dev/null 2>&1 || die "OpenVPN is not installed."
+    [[ -r "$auth_file" ]] || die "Cannot read temporary OpenVPN credentials."
+
+    load_config
+    proxy_test || die "Cannot reach ${PROXY_IP}:${PROXY_PORT}."
+
+    if full_tunnel_active; then
+        die "Full Tunnel is already connected."
+    fi
+
+    stop_full_tunnel_process
+    cleanup_full_tunnel_files
+    : > "$FULL_TUNNEL_LOG"
+    chmod 0600 "$FULL_TUNNEL_LOG"
+    prepare_full_tunnel_config "$source_config"
+    install -m 0600 "$auth_file" "$FULL_TUNNEL_AUTH"
+
+    log "PdaNet L4T Full Tunnel"
+    log "Proxy: ${PROXY_IP}:${PROXY_PORT}"
+    log "Config: $(basename -- "$source_config")"
+    log "Starting OpenVPN TCP tunnel..."
+
+    if ! openvpn --config "$FULL_TUNNEL_CONFIG" --writepid "$FULL_TUNNEL_PID" --log "$FULL_TUNNEL_LOG" --daemon pdanet-l4t-openvpn; then
+        rm -f "$FULL_TUNNEL_AUTH" "$FULL_TUNNEL_CONFIG" "$FULL_TUNNEL_PID"
+        die "OpenVPN could not start. See $FULL_TUNNEL_LOG"
+    fi
+
+    for i in $(seq 1 75); do
+        if grep -q 'Initialization Sequence Completed' "$FULL_TUNNEL_LOG" 2>/dev/null; then
+            pid="$(cat "$FULL_TUNNEL_PID" 2>/dev/null || true)"
+            if [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null; then
+                config_name="$(basename -- "$source_config")"
+                printf 'MODE=openvpn-tcp\nCONFIG=%s\n' "$config_name" > "$FULL_TUNNEL_STATE"
+                chmod 0644 "$FULL_TUNNEL_STATE"
+                rm -f "$FULL_TUNNEL_AUTH"
+                log "Full Tunnel: ONLINE"
+                return 0
+            fi
+        fi
+
+        if grep -Eq 'AUTH_FAILED|Options error:|Exiting due to fatal error|Cannot resolve host address|Connection timed out|TLS Error:' "$FULL_TUNNEL_LOG" 2>/dev/null; then
+            stop_full_tunnel_process
+            rm -f "$FULL_TUNNEL_AUTH" "$FULL_TUNNEL_CONFIG" "$FULL_TUNNEL_PID"
+            tail -n 12 "$FULL_TUNNEL_LOG" >&2 || true
+            die "OpenVPN failed. See $FULL_TUNNEL_LOG"
+        fi
+        sleep 1
+    done
+
+    stop_full_tunnel_process
+    rm -f "$FULL_TUNNEL_AUTH" "$FULL_TUNNEL_CONFIG" "$FULL_TUNNEL_PID"
+    tail -n 12 "$FULL_TUNNEL_LOG" >&2 || true
+    die "OpenVPN did not become ready within 75 seconds. See $FULL_TUNNEL_LOG"
+}
+
+full_tunnel_off() {
+    (( EUID == 0 )) || die "Full Tunnel disconnect requires root. Use the tray app."
+    stop_full_tunnel_process
+    cleanup_full_tunnel_files
+    log "Full Tunnel: OFFLINE"
+}
+
+full_tunnel_status() {
+    if full_tunnel_active; then
+        log "Full Tunnel: ONLINE"
+        cat "$FULL_TUNNEL_STATE"
+        return 0
+    fi
+    log "Full Tunnel: OFFLINE"
+    return 1
+}
+
 rollback() {
     remove_rules || true
     systemctl stop pdanet-redsocks pdanet-dnscrypt 2>/dev/null || true
@@ -163,6 +308,8 @@ turn_on() {
 
 turn_off() {
     (( EUID == 0 )) || die "Disconnect requires root. Use the tray app or: pkexec $0 off"
+    stop_full_tunnel_process
+    cleanup_full_tunnel_files
     rollback
     log "PdaNet L4T: OFFLINE"
 }
@@ -170,6 +317,9 @@ turn_off() {
 set_proxy() {
     (( EUID == 0 )) || die "Changing proxy requires root."
     [[ $# -eq 2 ]] || die "Usage: pdanet-l4t set-proxy PROXY_IP PROXY_PORT"
+    if full_tunnel_active; then
+        die "Disconnect Full Tunnel before changing the proxy."
+    fi
     save_config "$1" "$2"
     log "Saved proxy: $1:$2"
 }
@@ -178,8 +328,18 @@ case "${1:-}" in
     on) shift; turn_on "$@" ;;
     off) turn_off ;;
     set-proxy) shift; set_proxy "$@" ;;
+    full-tunnel-on) shift; full_tunnel_on "$@" ;;
+    full-tunnel-off) full_tunnel_off ;;
+    full-tunnel-status) full_tunnel_status ;;
     *)
-        printf '%s\n' 'Usage:' '  pdanet-l4t on [PROXY_IP PROXY_PORT]' '  pdanet-l4t off' '  pdanet-l4t set-proxy PROXY_IP PROXY_PORT'
+        printf '%s\n' \
+            'Usage:' \
+            '  pdanet-l4t on [PROXY_IP PROXY_PORT]' \
+            '  pdanet-l4t off' \
+            '  pdanet-l4t set-proxy PROXY_IP PROXY_PORT' \
+            '  pdanet-l4t full-tunnel-on CONFIG.ovpn AUTH_FILE' \
+            '  pdanet-l4t full-tunnel-off' \
+            '  pdanet-l4t full-tunnel-status'
         exit 1
         ;;
 esac
