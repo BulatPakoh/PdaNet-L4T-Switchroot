@@ -14,7 +14,11 @@ Please include:
 - whether installation completed
 - whether Connect, Disconnect and Change Proxy work
 - whether `curl -I https://google.com` and `sudo apt update` work
-- any applications that fail because they require UDP
+- whether Full Tunnel was tested
+- VPN provider and profile transport when relevant (for example OpenVPN TCP; do not post credentials, private keys or a private provider profile)
+- whether Full Tunnel connect/disconnect/reconnect works
+- whether saved keyring credentials and Auto-connect Full Tunnel work
+- application/game behavior in standard mode and, when tested, through Full Tunnel
 
 Run:
 
@@ -22,7 +26,7 @@ Run:
 bash diagnose.sh
 ```
 
-and include the relevant output with the issue. Do not post passwords, private keys, or unrelated personal data.
+and include the relevant output with the issue. Review logs before posting them publicly. Do not post passwords, OpenVPN credentials, keyring contents, private keys, private provider profiles, or unrelated personal data.
 
 ## Status vocabulary
 
