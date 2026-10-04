@@ -11,19 +11,26 @@ ASSUME_YES=0
 
 usage() {
     cat <<'EOF'
-Usage: uninstall.sh [OPTIONS]
-       pdanet-l4t-uninstall [OPTIONS]
+PdaNet L4T Uninstaller
 
-Without options:
-  Remove PdaNet L4T and the xsqu1znt PdaNet files/configuration installed
-  by this project. Shared Ubuntu packages are kept.
+Normal uninstall:
+  pdanet-l4t-uninstall
+
+  Removes PdaNet L4T and the PdaNet/xsqu1znt files installed by this project.
+  Keeps Ubuntu packages and keeps your GitHub source folder.
+
+Full cleanup:
+  pdanet-l4t-uninstall --remove-packages
+
+  Does the normal uninstall, then also removes only the PdaNet-related
+  packages that this installer recorded as newly installed.
+  You will see the package list and be asked before anything is removed.
+  If APT says other unrecorded packages would also be removed, it stops.
 
 Options:
-  --remove-packages  Also remove safe dependency candidates that were missing
-                     before PdaNet L4T installation and were then installed by
-                     the installer. Shared/core Ubuntu packages are not tracked.
-  -y, --yes          Skip the package-removal confirmation.
-  -h, --help         Show this help.
+  --remove-packages   Also remove installer-added PdaNet dependency packages.
+  -y, --yes           Skip only the package-removal confirmation.
+  -h, --help          Show this help.
 EOF
 }
 
