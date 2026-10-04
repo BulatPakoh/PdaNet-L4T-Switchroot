@@ -8,10 +8,10 @@ STATE_DIR="$HOME/.local/share/pdanet-l4t"
 UPSTREAM_DIR="$STATE_DIR/upstream/PdaNetClientCLI-Linux"
 PACKAGE_MANIFEST="$STATE_DIR/installed-packages.txt"
 PACKAGE_PREVIOUS="$STATE_DIR/installed-packages.previous"
-readonly -a REMOVABLE_PACKAGE_CANDIDATES=(adb dnscrypt-proxy redsocks python3-pyqt5 kdialog nftables)
+readonly -a REMOVABLE_PACKAGE_CANDIDATES=(adb dnscrypt-proxy redsocks python3-pyqt5 kdialog nftables openvpn)
 readonly -a REQUIRED_APT_PACKAGES=(
     adb bash coreutils curl dnscrypt-proxy gawk git grep iproute2 iptables
-    kdialog libc-bin nftables policykit-1 python3 python3-pyqt5 redsocks systemd util-linux
+    kdialog libc-bin nftables openvpn policykit-1 python3 python3-pyqt5 redsocks systemd util-linux
 )
 
 info() { printf '==> %s\n' "$*"; }
@@ -51,7 +51,7 @@ if (( ${#missing_required_packages[@]} > 0 )); then
     while IFS= read -r package; do
         package="${package%%:*}"
         case "$package" in
-            adb|dnscrypt-proxy|redsocks|python3-pyqt5|kdialog|nftables)
+            adb|dnscrypt-proxy|redsocks|python3-pyqt5|kdialog|nftables|openvpn)
                 printf '%s\n' "$package" >> "$package_new"
                 ;;
         esac
@@ -171,5 +171,5 @@ printf '\nInstallation complete.\n'
 printf '1. On Android: PdaNet+ -> WiFi Direct Hotspot -> ON\n'
 printf '2. Join that DIRECT-...-PdaNet Wi-Fi network in Linux.\n'
 printf '3. Open PdaNet L4T from the application menu or tray and choose Connect.\n'
-printf '4. Uninstall later with: pdanet-l4t-uninstall\n'
+printf '4. Optional Full Tunnel mode can use a trusted OpenVPN TCP .ovpn profile from the tray.\n'\nprintf '5. Uninstall later with: pdanet-l4t-uninstall\n'
 printf '\nUpstream base: xsqu1znt/PdaNetClientCLI-Linux @ %s\n' "$UPSTREAM_COMMIT"
