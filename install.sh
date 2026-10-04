@@ -6,6 +6,9 @@ UPSTREAM_COMMIT="f20ae0e679f26d1703f6a99ffc1978fc7c7dd84f"
 BASE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="$HOME/.local/share/pdanet-l4t"
 UPSTREAM_DIR="$STATE_DIR/upstream/PdaNetClientCLI-Linux"
+PACKAGE_MANIFEST="$STATE_DIR/installed-packages.txt"
+PACKAGE_BEFORE="$STATE_DIR/packages-before.txt"
+PACKAGE_PREVIOUS="$STATE_DIR/installed-packages.previous"
 
 info() { printf '==> %s\n' "$*"; }
 ok() { printf '  OK  %s\n' "$*"; }
@@ -15,11 +18,19 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 command -v apt-get >/dev/null 2>&1 || die "This release currently targets Debian/Ubuntu/Switchroot systems using APT."
 command -v sudo >/dev/null 2>&1 || die "sudo is required."
 
+info "Recording packages already present before PdaNet L4T installation"
+mkdir -p "$STATE_DIR/upstream"
+if [[ -f "$PACKAGE_MANIFEST" ]]; then
+    cp -f "$PACKAGE_MANIFEST" "$PACKAGE_PREVIOUS"
+else
+    : > "$PACKAGE_PREVIOUS"
+fi
+dpkg-query -W -f='${binary:Package}\n' 2>/dev/null | LC_ALL=C sort -u > "$PACKAGE_BEFORE"
+
 info "Installing wrapper dependencies"
 sudo apt-get update
 sudo apt-get install -y git curl iptables python3 python3-pyqt5 kdialog policykit-1
 
-mkdir -p "$STATE_DIR/upstream"
 if [[ -d "$UPSTREAM_DIR/.git" ]]; then
     info "Refreshing xsqu1znt/PdaNetClientCLI-Linux"
     git -C "$UPSTREAM_DIR" fetch --all --tags
@@ -40,6 +51,14 @@ redsocks_bin="$(command -v redsocks || true)"
 dnscrypt_bin="$(command -v dnscrypt-proxy || true)"
 [[ -n "$redsocks_bin" ]] || die "redsocks executable not found after upstream installation."
 [[ -n "$dnscrypt_bin" ]] || die "dnscrypt-proxy executable not found after upstream installation."
+
+info "Recording packages added by this installer"
+package_after="$(mktemp)"
+package_new="$(mktemp)"
+dpkg-query -W -f='${binary:Package}\n' 2>/dev/null | LC_ALL=C sort -u > "$package_after"
+comm -13 "$PACKAGE_BEFORE" "$package_after" > "$package_new"
+cat "$PACKAGE_PREVIOUS" "$package_new" | sed '/^[[:space:]]*$/d' | LC_ALL=C sort -u > "$PACKAGE_MANIFEST"
+rm -f "$package_after" "$package_new" "$PACKAGE_BEFORE" "$PACKAGE_PREVIOUS"
 
 info "Applying L4T/Noble service-path compatibility"
 sudo sed -Ei "s|^ExecStart=.*redsocks.*|ExecStart=${redsocks_bin} -c /etc/redsocks-pdanet.conf|" /etc/systemd/system/pdanet-redsocks.service
@@ -70,6 +89,7 @@ sudo install -m 0755 "$BASE_DIR/src/pdanet-l4t" /usr/local/sbin/pdanet-l4t
 mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications" "$HOME/.config/autostart"
 install -m 0755 "$BASE_DIR/src/pdanet-l4t-tray" "$HOME/.local/bin/pdanet-l4t-tray"
 install -m 0755 "$BASE_DIR/src/pdanet-l4t-launch" "$HOME/.local/bin/pdanet-l4t-launch"
+install -m 0755 "$BASE_DIR/uninstall.sh" "$HOME/.local/bin/pdanet-l4t-uninstall"
 
 read -r -p "PdaNet proxy IP [192.168.49.1]: " proxy_ip
 proxy_ip="${proxy_ip:-192.168.49.1}"
@@ -113,10 +133,11 @@ info "Verifying installed files"
 bash -n /usr/local/sbin/pdanet-l4t
 python3 -m py_compile "$HOME/.local/bin/pdanet-l4t-tray"
 bash -n "$HOME/.local/bin/pdanet-l4t-launch"
+bash -n "$HOME/.local/bin/pdanet-l4t-uninstall"
 ok "Installation checks passed."
 
 printf '\nInstallation complete.\n'
 printf '1. On Android: PdaNet+ -> WiFi Direct Hotspot -> ON\n'
 printf '2. Join that DIRECT-...-PdaNet Wi-Fi network in Linux.\n'
 printf '3. Open PdaNet L4T from the application menu or tray and choose Connect.\n'
-printf '\nUpstream base: xsqu1znt/PdaNetClientCLI-Linux @ %s\n' "$UPSTREAM_COMMIT"
+printf '4. Uninstall later with: pdanet-l4t-uninstall\n'\nprintf '\nUpstream base: xsqu1znt/PdaNetClientCLI-Linux @ %s\n' "$UPSTREAM_COMMIT"
