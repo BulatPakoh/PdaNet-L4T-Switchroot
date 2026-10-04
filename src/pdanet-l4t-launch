@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+TRAY="$HOME/.local/bin/pdanet-l4t-tray"
+if pgrep -u "$USER" -f "$TRAY" >/dev/null; then
+    exit 0
+fi
+exec "$TRAY"
