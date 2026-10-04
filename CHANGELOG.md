@@ -9,8 +9,12 @@
 - Adds optional saved Full Tunnel profile, secure keyring-backed credentials, auto-connect, profile replacement and a 'Forget Saved Full Tunnel' control.
 - Auto-connect from the main tray Connect action now performs standard PdaNet and saved Full Tunnel startup in one privileged backend transaction, avoiding a second PolicyKit password prompt in the normal flow.
 - Standard PdaNet L4T disconnect now also stops the Full Tunnel cleanly.
-- Manual proof-of-concept on the tested Switch OLED showed Discord voice changing from `No Route` without the tunnel to a working voice connection through `tun0`; stopping OpenVPN immediately returned Discord to `No Route`.
-- The tested proof used Proton VPN Free with an OpenVPN TCP profile. Proton is a tested provider, not a hardcoded dependency; the feature targets compatible OpenVPN TCP profiles.
+- Adds `openvpn` and `libsecret-tools` to the missing-only dependency checks for Full Tunnel and desktop-keyring support.
+- Validates Discord voice changing from `No Route` in standard mode to a working connection through `tun0`; stopping OpenVPN immediately returned Discord to `No Route`, and reconnecting restored voice.
+- Validates saved profile/keyring credentials, Full Tunnel auto-connect, reboot persistence and the single-PolicyKit-prompt combined Connect flow on the tested KDE session.
+- Expands diagnostics, TESTED documentation, troubleshooting and compatibility-report guidance for Full Tunnel without exposing saved credentials.
+- The confirmed provider test used Proton VPN Free with an OpenVPN TCP profile. Proton is a tested provider, not a hardcoded dependency; the feature targets compatible OpenVPN TCP profiles.
+- A pristine-OS install where `openvpn` and `libsecret-tools` are initially absent is not yet claimed as confirmed.
 
 ## 0.1.0 - 2026-10-04 - Initial WiFi Direct release
 
