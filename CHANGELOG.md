@@ -7,7 +7,7 @@
 - Confirmed login/reboot autostart, Connect, Disconnect, Quit, application-menu relaunch and reconnect.
 - Adds a standalone `pdanet-l4t-uninstall` command so removal does not depend on keeping the GitHub source checkout.
 - Final uninstall design removes PdaNet L4T plus the xsqu1znt files/configuration installed by this project while keeping shared Ubuntu packages by default.
-- Adds optional `--remove-packages` mode backed by a pre-install package manifest and an APT safety simulation.
+- Adds optional `--remove-packages` mode backed by a narrow PdaNet dependency allowlist, pre-install presence checks and an APT safety simulation; unrelated packages installed concurrently cannot enter the manifest.
 - Documents that the installer registers login autostart but does not launch the tray immediately in the same session.
 - Uses xsqu1znt/PdaNetClientCLI-Linux pinned to commit f20ae0e679f26d1703f6a99ffc1978fc7c7dd84f.
 - Replaces incompatible nftables Wi-Fi routing with an isolated iptables-legacy NAT chain.
