@@ -28,7 +28,6 @@
 - Documents current WiFi Direct results: DNS/TCP/HTTPS confirmed; raw UDP and ICMP failed on the tested setup.
 - Documents direct PdaNet proxy, KDE manual proxy and KDE PAC A/B testing.
 - Records `wtyler2505/pdanet-linux` commit `30b19c8` as a tested alternative/reference on the same Switchroot hardware, including its failed Internet verification on the tested PdaNet WiFi Direct workflow.
-- Uses neutral single-maintainer documentation wording instead of team-style `we/our/us` language.
 - Invites community game/app reports, including successful results, to build a real compatibility list.
 
 ### Test-scope note
