@@ -28,7 +28,7 @@ Full cleanup:
   If APT says other unrecorded packages would also be removed, it stops.
 
 Options:
-  --remove-packages   Also remove installer-added PdaNet dependency packages.
+  --remove-packages   Remove installer-added PdaNet dependency packages.
   -y, --yes           Skip only the package-removal confirmation.
   -h, --help          Show this help.
 EOF
