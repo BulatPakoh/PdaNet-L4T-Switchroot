@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 - Initial stable WiFi Direct release
+## 0.1.0 - Initial WiFi Direct version (unreleased)
 
 - Confirmed on Nintendo Switch OLED / Switchroot Ubuntu Noble / kernel 4.9.140-l4t.
 - Clean-application installation from a fresh GitHub clone completed successfully.
@@ -11,10 +11,10 @@
 - Adds optional `--remove-packages` mode backed by a narrow PdaNet dependency allowlist, ownership captured from the actual PdaNet L4T APT transaction, and an APT safety simulation; unrelated concurrent package installs cannot enter the manifest.
 - Installer now sends only missing packages to APT, avoiding the side effect where already-installed automatic packages could be marked as manually installed.
 - Confirmed the package-state fix on Switchroot Noble: with all dependencies already present, APT is not invoked for package installation, no manual/auto package state is changed, and the ownership manifest remains empty.
-- Package removal also rejects manifest entries outside the built-in allowlist before any uninstall action, protecting against a corrupted or manually altered manifest.
+- Package removal rejects manifest entries outside the built-in allowlist before any uninstall action, protecting against a corrupted or manually altered manifest.
 - Documents that the installer registers login autostart but does not launch the tray immediately in the same session.
-- Uses xsqu1znt/PdaNetClientCLI-Linux pinned to commit f20ae0e679f26d1703f6a99ffc1978fc7c7dd84f.
-- Replaces incompatible nftables Wi-Fi routing with an isolated iptables-legacy NAT chain.
+- Uses xsqu1znt/PdaNetClientCLI-Linux pinned to commit `f20ae0e679f26d1703f6a99ffc1978fc7c7dd84f`.
+- Replaces the incompatible upstream nftables WiFi routing path with an isolated `iptables-legacy` NAT chain.
 - Adds proxy IP/port configuration.
 - Updates both redsocks and dnscrypt-proxy when proxy settings change.
 - Handles Noble dnscrypt-proxy compatibility (`odoh_servers`, `http3`).
@@ -25,7 +25,10 @@
 - Adds diagnostics and troubleshooting documentation based on real test failures.
 - Fixes KDE tray Quit cleanup so the icon is hidden before the Qt event loop exits.
 - Adds an in-process file lock so autostart/session-restore races cannot create duplicate tray instances.
-- Documents current WiFi Direct results: DNS/TCP/HTTPS confirmed; raw UDP and ICMP not confirmed on the tested setup.
+- Documents current WiFi Direct results: DNS/TCP/HTTPS confirmed; raw UDP and ICMP failed on the tested setup.
+- Documents direct PdaNet proxy, KDE manual proxy and KDE PAC A/B testing.
+- Records `wtyler2505/pdanet-linux` commit `30b19c8` as a tested alternative/reference on the same Switchroot hardware, including its failed Internet verification on the tested PdaNet WiFi Direct workflow.
+- Uses neutral single-maintainer documentation wording instead of team-style `we/our/us` language.
 - Invites community game/app reports, including successful results, to build a real compatibility list.
 
 ### Test-scope note
@@ -34,4 +37,4 @@ The v0.1.0 clean-install validation used a clean **application** state rather th
 
 ### Roadmap
 
-- USB/TUN full-tunnel work is tracked separately for v0.2 and is not mixed into the v0.1 WiFi Direct release.
+- USB/TUN full-tunnel work is tracked separately for v0.2 and is not mixed into the v0.1 WiFi Direct version.

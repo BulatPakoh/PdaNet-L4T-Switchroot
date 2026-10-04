@@ -1,52 +1,62 @@
 # PdaNet L4T — Nota Ringkas BM
 
-Ini ialah **compatibility layer khas untuk Switchroot / NVIDIA L4T lama** bagi menggunakan **PdaNet+ WiFi Direct Hotspot** pada kernel yang bermasalah dengan laluan NAT biasa.
+Ini ialah **compatibility layer untuk Switchroot / NVIDIA L4T lama** bagi menggunakan **PdaNet+ WiFi Direct Hotspot** pada setup yang laluan nftables upstream tidak serasi dengan kernel L4T yang diuji.
 
-Pada Nintendo Switch OLED yang diuji, kernel `4.9.140-l4t` tidak mempunyai sokongan nftables NAT yang diperlukan oleh client upstream, tetapi `iptables-legacy` masih boleh buat NAT + `REDIRECT` dengan betul.
+Pada Nintendo Switch OLED yang diuji, kernel `4.9.140-l4t` tidak menyediakan `nft_chain_nat` yang diperlukan oleh laluan WiFi upstream, tetapi `iptables-legacy` NAT + `REDIRECT` masih berfungsi.
 
-PdaNet L4T guna **xsqu1znt/PdaNetClientCLI-Linux** sebagai base, kemudian tambah fix L4T/Noble, `iptables-legacy` fallback, config proxy, installer automatik dan system tray.
+PdaNet L4T menggunakan **xsqu1znt/PdaNetClientCLI-Linux** sebagai base, kemudian menambah compatibility fix untuk L4T/Noble, routing `iptables-legacy`, konfigurasi proxy, installer dan system tray ringan.
 
-## Apa project ini buat
+Validasi semasa berdasarkan satu Nintendo Switch OLED dengan Switchroot Ubuntu Noble. Report daripada hardware lain dialu-alukan.
 
-- fokus pada Switchroot / legacy NVIDIA L4T;
-- automasi fix yang telah diuji pada Switch OLED;
-- transparent TCP redirect melalui redsocks;
-- DNS melalui dnscrypt-proxy;
-- tray Connect / Disconnect / Change Proxy / Status;
-- autostart dan single-instance tray.
-
-## Kenapa tak set proxy Ubuntu sahaja?
-
-Kalau set proxy PdaNet `192.168.49.1:8000` secara manual, browser atau app yang memang ikut system proxy mungkin terus boleh Internet.
-
-Masalahnya, bukan semua app ikut setting proxy desktop. Project ini redirect TCP secara transparent:
-
-```text
-App
- ↓
-TCP biasa
- ↓
-iptables-legacy
- ↓
-redsocks
- ↓
-PdaNet proxy
- ↓
-Phone
-```
-
-Jadi user tak perlu configure proxy satu-satu untuk setiap app yang menggunakan TCP biasa.
-
-## Setup yang telah betul-betul diuji
+## Setup yang telah diuji
 
 - Nintendo Switch OLED
 - Switchroot Ubuntu Noble
 - kernel `4.9.140-l4t`
 - `arm64`
-- POCO F7 sebagai phone host
+- KDE Plasma / X11
+- POCO F7 sebagai Android host
 - PdaNet+ Android `5.32.0`
-- xsqu1znt/PdaNetClientCLI-Linux commit `f20ae0e679f26d1703f6a99ffc1978fc7c7dd84f`
+- PdaNet+ WiFi Direct Hotspot
 - proxy `192.168.49.1:8000`
+- xsqu1znt/PdaNetClientCLI-Linux commit `f20ae0e679f26d1703f6a99ffc1978fc7c7dd84f`
+
+Detail ujian ada dalam [docs/TESTED.md](docs/TESTED.md).
+
+## Kenapa tak guna proxy desktop sahaja?
+
+Proxy PdaNet memang boleh digunakan secara terus.
+
+Pada setup Switchroot/KDE yang diuji:
+
+```text
+curl dengan --proxy secara terus   PASS
+KDE/KIO                            PASS
+
+curl biasa melalui KDE proxy       FAIL - DNS
+Chrome melalui KDE proxy           FAIL - DNS
+Chrome melalui PAC yang diuji      FAIL - tiada Internet
+```
+
+Keputusan ini khusus kepada setup yang diuji. Ia bukan bermaksud fungsi proxy KDE atau PdaNet rosak secara umum.
+
+PdaNet L4T mengendalikan TCP dan DNS secara transparent:
+
+```text
+App
+ |
+TCP / DNS biasa
+ |
+iptables-legacy REDIRECT
+ |
+redsocks / dnscrypt-proxy
+ |
+PdaNet proxy
+ |
+Phone
+```
+
+Dengan PdaNet L4T aktif pada sistem yang sama, `curl` biasa dan Chrome berfungsi tanpa perlu set proxy untuk setiap aplikasi.
 
 ## Install
 
@@ -58,92 +68,123 @@ cd PdaNet-L4T-Switchroot
 bash install.sh
 ```
 
-Installer akan buat setup xsqu1znt, patch compatibility Noble/L4T, pasang `iptables-legacy` wrapper dan system tray secara automatik.
+Jangan jalankan `install.sh` sendiri dengan `sudo`. Installer akan minta elevation bila perlu.
 
-> **Tray selepas install:** installer akan daftar PdaNet L4T untuk autostart masa login, tetapi tray **tidak terus muncul dalam session yang sama selepas installer habis**. Selepas install, sama ada buka **PdaNet L4T** sekali dari application menu/search, atau logout/restart. Pada login seterusnya tray akan muncul secara automatik.
+Default proxy:
+
+```text
+192.168.49.1:8000
+```
+
+Gunakan IP dan port yang PdaNet+ tunjuk jika nilainya berbeza.
+
+Installer akan:
+
+- pasang hanya dependency yang masih tiada;
+- clone dan pin commit upstream yang telah diuji;
+- apply fix Noble/L4T;
+- verify `iptables-legacy` NAT + `REDIRECT`;
+- pasang routing wrapper dan PyQt tray;
+- simpan config proxy;
+- buat application-menu entry dan login autostart.
+
+Tray tidak dilancarkan terus dalam desktop session yang sama selepas installer selesai. Buka **PdaNet L4T** dari application menu sekali, atau logout/reboot.
 
 ## Guna hari-hari
 
-1. Phone: PdaNet+ → WiFi Direct Hotspot ON.
-2. Ubuntu: connect Wi-Fi `DIRECT-...-PdaNet`.
-3. Klik icon **PdaNet L4T** dalam system tray (`^`).
+1. Hidupkan **WiFi Direct Hotspot** dalam PdaNet+.
+2. Connect ke Wi-Fi `DIRECT-...-PdaNet`.
+3. Buka tray **PdaNet L4T**.
 4. Tekan **Connect**.
-5. Masukkan password Ubuntu bila popup authentication keluar.
+5. Approve authentication prompt.
 
-Kalau IP/port phone lain berbeza, guna **Change Proxy**.
+Backend hanya melaporkan ONLINE selepas proxy, services, routing dan HTTPS validation berjaya.
+
+Tray turut menyediakan **Disconnect**, **Change Proxy**, **Show Status** dan **Quit**.
 
 ## Limit WiFi Direct sekarang
 
-Yang telah confirmed pada setup Switchroot ini:
+Keputusan semasa:
 
-- DNS ✅
-- TCP ✅
-- HTTPS ✅
-- raw UDP ❌
-- ICMP / ping ❌
+```text
+DNS       PASS
+TCP       PASS
+HTTPS     PASS
+Raw UDP   FAIL
+ICMP      FAIL
+```
 
-Jadi jangan anggap semua game atau app UDP akan jalan melalui WiFi Direct mode ini.
+Web browsing, Git, `apt`, `curl`, `wget` dan aplikasi berasaskan TCP ialah target utama yang telah disahkan.
 
-**USB/TUN full-tunnel dirancang untuk v0.2** dan sengaja tidak dicampurkan ke v0.1 sekarang.
+`ping` bukan success test yang sesuai untuk mode ini.
 
-### Ujian game/network komuniti
+Aplikasi yang perlukan arbitrary UDP mungkin tidak berfungsi. Game perlu diuji satu-satu kerana ada yang menggunakan TCP, relay atau fallback transport.
 
-Raw UDP dan ICMP gagal pada setup ujian sekarang, tetapi itu **tak semestinya bermaksud semua game akan gagal**. Ada game yang guna TCP, campuran protocol, relay server atau fallback lain.
-
-Kalau kau test game atau app network-heavy, **bagitahu result walaupun ia berjaya**. Lagi bagus kalau report:
-
-- nama game/app;
-- login boleh atau tak;
-- matchmaking/join session boleh atau tak;
-- gameplay sebenar jalan atau tak;
-- voice chat jalan atau tak;
-- kernel Switchroot/L4T, model phone dan versi PdaNet+.
-
-Buka GitHub issue dan beritahu apa yang jalan atau gagal supaya compatibility list dibina daripada ujian hardware sebenar, bukan andaian.
+USB/TUN full-tunnel diletakkan berasingan untuk v0.2.
 
 ## Related projects
 
-- **xsqu1znt/PdaNetClientCLI-Linux** — base yang project ini gunakan.
-- **wtyler2505/pdanet-linux** — client PdaNet Linux yang lebih general dengan implementation sendiri, installer automatik, GUI GTK, redsocks/iptables, WiFi/USB workflow dan carrier-bypass features.
+### xsqu1znt/PdaNetClientCLI-Linux
 
-### Beza dengan wtyler2505/pdanet-linux
+Ini ialah upstream base yang digunakan oleh PdaNet L4T. Ia menyediakan architecture redsocks, dnscrypt-proxy, systemd dan client PdaNet Linux yang digunakan oleh project ini.
 
-**wtyler2505/pdanet-linux** fokus pada pengalaman PdaNet untuk Linux general, khususnya distro Debian/Ubuntu-style; README dia senaraikan Linux Mint 22.2 Cinnamon sebagai platform yang diuji.
+Source upstream tidak divendor atau diclaim sebagai code project ini. Installer clone upstream secara terus dan pin commit yang telah diuji.
 
-**PdaNet L4T** pula fokus pada masalah yang kita reproduce sendiri pada Switchroot:
+### wtyler2505/pdanet-linux
 
-- Nintendo Switch OLED + Switchroot Ubuntu Noble;
-- kernel `4.9.140-l4t`;
-- `nft_chain_nat` tak tersedia;
-- `iptables-legacy` masih berfungsi;
-- fix dnscrypt-proxy Noble 2.0.45;
-- fix path `/usr/bin` vs `/usr/sbin`;
-- lightweight tray untuk integration Switchroot.
+`wtyler2505/pdanet-linux` ialah project PdaNet Linux berasingan untuk sistem Debian/Ubuntu-style yang lebih general.
 
-Jadi memang ada overlap pada redsocks/iptables dan transparent routing, tetapi **scope utama PdaNet L4T ialah compatibility Switchroot / legacy NVIDIA L4T**, bukan general Linux desktop client.
+Ia bukan dependency PdaNet L4T, tetapi commit `30b19c8` telah diuji pada Switch OLED / Switchroot yang sama sebagai alternative/reference.
 
-Project ini tidak affiliated dengan PdaNet/FoxFi atau project upstream tersebut.
+Selepas command `iw` yang diperlukan dipasang, script WiFi project tersebut berjaya detect interface Switch dan network PdaNet WiFi Direct, tetapi Internet verification gagal pada setup Switchroot yang diuji.
 
-## Status ujian v0.1.0
+Keputusan itu hanya untuk konfigurasi ujian ini dan **bukan** dakwaan bahawa project tersebut rosak atau tidak sesuai untuk platform sasarannya.
 
-Clean-application install daripada fresh GitHub clone telah diuji pada setup di atas. Installer, autostart selepas reboot/login, Connect, Disconnect, Quit, buka semula daripada application search dan reconnect semuanya berjaya. OS tidak dipasang semula dari kosong, jadi dependency package Ubuntu yang pernah dipasang sebelum ini masih ada semasa ujian.
+Detail penuh direkod dalam [docs/TESTED.md](docs/TESTED.md).
+
+## Status ujian 0.1.0
+
+Code `0.1.0` telah diuji daripada clean **application state** menggunakan fresh GitHub clone.
+
+Installer, login autostart, single-instance tray, Connect, Disconnect, Quit, relaunch, reconnect, standalone uninstall dan package-state-safe reinstall telah disahkan.
+
+OS tidak dipasang semula dari kosong sebelum ujian, jadi pristine-OS dependency test masih berguna sebagai coverage tambahan.
 
 ## Uninstall
 
-Installer turut pasang command uninstall sendiri, jadi walaupun folder GitHub sudah dibuang kemudian, PdaNet L4T masih boleh dibersihkan dengan:
+Standard:
 
 ```bash
 pdanet-l4t-uninstall
 ```
 
-Mode biasa akan buang **PdaNet L4T + fail xsqu1znt yang dipasang oleh project ini**: tray, autostart, config, systemd service, upstream checkout dan routing state. Package Ubuntu yang dikongsi dengan sistem akan dikekalkan.
+Ini membuang PdaNet L4T, routing, config/service PdaNet dan fail upstream yang dipasang oleh project ini sambil mengekalkan shared Ubuntu packages.
 
-Kalau mahu buang sekali package yang **baru ditambah semasa installer PdaNet L4T berjalan**:
+Untuk turut membuang dependency package yang benar-benar baru dipasang oleh installer:
 
 ```bash
 pdanet-l4t-uninstall --remove-packages
 ```
 
-Untuk keselamatan, ownership package diambil daripada **APT transaction sebenar yang dijalankan oleh PdaNet L4T**, bukan compare seluruh database package sebelum dan selepas install. Hanya allowlist kecil package berkaitan PdaNet (`adb`, `dnscrypt-proxy`, `redsocks`, `python3-pyqt5`, `kdialog`, `nftables`) boleh masuk manifest, dan hanya jika APT transaction PdaNet itu sendiri melaporkannya sebagai package baru dipasang. Jadi package lain yang user download atau install pada masa sama tak boleh tersalah masuk manifest. Package shared/core seperti `python3`, `git`, `curl`, `iptables` dan PolicyKit tidak akan auto-remove melalui mode ini. Sebelum purge, script juga buat simulasi APT dan akan berhenti jika APT mahu membuang package tambahan yang tidak direkod.
+Hanya package allowlist berikut boleh dianggap installer-owned:
 
-Folder source GitHub tidak dipadam secara automatik. Kalau sudah tak mahu source repo, keluar dari folder itu dahulu dan padam secara manual.
+```text
+adb
+dnscrypt-proxy
+redsocks
+python3-pyqt5
+kdialog
+nftables
+```
+
+Ia hanya layak dibuang jika APT transaction PdaNet L4T sendiri merekodkannya sebagai package baru.
+
+Shared/core tools seperti `python3`, `git`, `curl`, `iptables` dan PolicyKit tidak auto-remove. Uninstaller juga menjalankan APT simulation dan berhenti jika package tambahan yang tidak direkod turut dicadangkan untuk dibuang.
+
+Folder source GitHub sengaja dikekalkan.
+
+## Attribution
+
+PdaNet L4T ialah independent compatibility project dan tidak affiliated dengan PdaNet/FoxFi, xsqu1znt, wtyler2505, Switchroot, Nintendo atau NVIDIA.
+
+Code asal dalam repository ini menggunakan MIT License. Lihat [ATTRIBUTION.md](ATTRIBUTION.md) dan [LICENSE](LICENSE).

@@ -1,71 +1,101 @@
 # PdaNet L4T
 
-A **Switchroot / legacy NVIDIA L4T compatibility layer** for using **PdaNet+ WiFi Direct Hotspot** on older kernels where the usual Linux routing path can fail.
+A **Switchroot / legacy NVIDIA L4T compatibility layer** for using **PdaNet+ WiFi Direct Hotspot** on systems where the upstream Linux routing path is incompatible with the tested legacy L4T kernel and desktop proxy settings are not sufficient for every application.
 
-On the tested Nintendo Switch OLED / Switchroot system, the upstream WiFi path expected nftables NAT support that the kernel did not provide, while `iptables-legacy` NAT + `REDIRECT` worked correctly. PdaNet L4T automates that compatibility path and adds a lightweight tray frontend for daily use.
+On the tested Nintendo Switch OLED / Switchroot Ubuntu Noble system, the upstream `xsqu1znt/PdaNetClientCLI-Linux` WiFi path expected nftables NAT support that the kernel did not provide, while `iptables-legacy` NAT + `REDIRECT` worked correctly.
 
-PdaNet L4T uses **xsqu1znt/PdaNetClientCLI-Linux** as its base engine (redsocks + dnscrypt-proxy + systemd integration), then adds the Switchroot/L4T fixes, proxy configuration, installer logic and tray integration confirmed on the tested hardware.
+PdaNet L4T keeps the upstream redsocks and dnscrypt-proxy architecture, replaces the incompatible routing path with a tested `iptables-legacy` implementation, applies Noble/L4T compatibility fixes, and adds a lightweight system-tray frontend.
+
+Current validation is based on one Nintendo Switch OLED / Switchroot Ubuntu Noble system. Additional real-hardware reports are welcome.
 
 ## Tested configuration
 
-Confirmed working in a real session:
+Confirmed working on:
 
 - Nintendo Switch OLED
 - Switchroot Ubuntu Noble
-- Kernel: `4.9.140-l4t`
-- Architecture: `arm64`
+- Kernel `4.9.140-l4t`
+- Architecture `arm64`
+- KDE Plasma / X11
 - Android host: POCO F7
-- PdaNet+ Android: `5.32.0`
-- Connection: PdaNet+ **WiFi Direct Hotspot**
+- PdaNet+ Android `5.32.0`
+- PdaNet+ WiFi Direct Hotspot
+- Proxy `192.168.49.1:8000`
 - Upstream base: `xsqu1znt/PdaNetClientCLI-Linux`
 - Tested upstream commit: `f20ae0e679f26d1703f6a99ffc1978fc7c7dd84f`
-- Tested proxy: `192.168.49.1:8000`
 
-Other Android phones and L4T devices may work, but the configuration above is what has actually been tested.
+Other phones, Switch models, L4T kernels and NVIDIA L4T devices may work, but are not currently claimed as confirmed.
 
-> **v0.1.0 tested status:** a clean-application install from a fresh GitHub clone has been completed on the configuration above. Installer setup, login autostart, Connect, Disconnect, Quit, relaunch from the application menu and reconnect were all confirmed working. The OS itself was not freshly reinstalled, so previously installed Ubuntu dependency packages were still present.
+See [docs/TESTED.md](docs/TESTED.md) for detailed test results.
 
-## Why not just set the proxy in Ubuntu?
+## Why not just use the desktop proxy?
 
-PdaNet WiFi Direct exposes an HTTP proxy, and manually setting that proxy in Ubuntu can be enough for software that **honors the desktop/system proxy setting**.
+PdaNet WiFi Direct exposes an HTTP proxy, and using that proxy directly is valid.
 
-That does not automatically cover every application. Some programs ignore the desktop proxy configuration entirely. This project uses transparent TCP redirection so ordinary applications can open TCP connections without each application being configured separately:
+On the tested Switchroot/KDE setup:
+
+```text
+Explicit curl --proxy       PASS
+KDE/KIO proxy access        PASS
+
+Normal curl via KDE proxy   FAIL - DNS resolution
+Chrome via KDE proxy        FAIL - DNS resolution
+Chrome via tested PAC path  FAIL - no Internet
+```
+
+These results are specific to the tested system and do not mean KDE proxy support or PdaNet proxying is generally broken.
+
+The important difference is that desktop proxy settings depend on applications actually using that proxy configuration.
+
+PdaNet L4T instead redirects normal TCP and DNS traffic transparently:
 
 ```text
 Application
     |
-normal TCP connection
+normal TCP / DNS
     |
 iptables-legacy REDIRECT
     |
-redsocks
+redsocks / dnscrypt-proxy
     |
-PdaNet HTTP CONNECT proxy
+PdaNet HTTP proxy
     |
 Android phone
 ```
 
-DNS is handled through the PdaNet-specific dnscrypt-proxy configuration.
+With PdaNet L4T enabled on the same system, normal `curl` and Chrome worked without per-application proxy configuration.
 
-## What the installer automates
+## Why this compatibility layer exists
 
-The painful manual debugging should not be required for normal users. `install.sh`:
+The tested Switchroot kernel is:
 
-1. installs wrapper dependencies;
-2. clones the upstream xsqu1znt client;
-3. checks out the exact tested commit;
-4. runs the upstream installer;
-5. fixes `/usr/bin` vs `/usr/sbin` service executable paths using the paths actually installed on the machine;
-6. removes dnscrypt-proxy options rejected by Noble's older dnscrypt-proxy;
-7. verifies `iptables-legacy` NAT + REDIRECT support;
-8. installs the L4T routing wrapper;
-9. installs a PyQt system-tray app;
-10. asks for the phone's PdaNet proxy IP and port;
-11. creates one application-menu entry and autostarts the tray on login.
+```text
+4.9.140-l4t
+```
 
-## Quick install
+On that system:
 
-You need a temporary working Internet connection for the first install because packages and the upstream GitHub project must be downloaded.
+```text
+nft_chain_nat     unavailable
+iptables-legacy   available
+```
+
+The upstream nftables NAT path therefore could not be used, while legacy NAT + `REDIRECT` worked correctly.
+
+PdaNet L4T keeps the upstream proxy services but installs an isolated `PDANET` chain using `iptables-legacy`.
+
+Two additional compatibility problems were reproduced during testing:
+
+- upstream systemd executable paths did not match the installed `redsocks` / `dnscrypt-proxy` locations;
+- Noble's dnscrypt-proxy `2.0.45` rejected the upstream `odoh_servers` and `http3` options.
+
+The installer handles both automatically.
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for the actual failures observed during development.
+
+## Install
+
+A temporary working Internet connection is required for the first installation.
 
 ```bash
 git clone https://github.com/BulatPakoh/PdaNet-L4T-Switchroot.git
@@ -73,107 +103,137 @@ cd PdaNet-L4T-Switchroot
 bash install.sh
 ```
 
-Do **not** run `install.sh` itself with `sudo`; it asks for elevation only when needed.
+Do **not** run `install.sh` itself with `sudo`.
 
-Default proxy values are:
+The installer requests elevation only for operations that require it.
+
+Default PdaNet proxy:
 
 ```text
 192.168.49.1:8000
 ```
 
-Use the values shown inside the PdaNet+ Android app if yours are different.
+Use the IP and port shown by PdaNet+ if yours are different.
 
-> **Tray startup after install:** the installer registers PdaNet L4T for login autostart, but it does **not** launch the tray immediately in the current desktop session. After installation, either open **PdaNet L4T** once from the application menu/search, or log out/reboot. On the next login, the tray starts automatically.
+The installer:
+
+- installs only missing dependencies;
+- clones and pins the tested upstream commit;
+- applies the Noble/L4T compatibility fixes;
+- verifies `iptables-legacy` NAT + `REDIRECT`;
+- installs the routing wrapper and PyQt tray;
+- stores the PdaNet proxy configuration;
+- creates the application-menu and login-autostart entries.
+
+Package ownership is tracked conservatively so unrelated Ubuntu packages are not removed by the uninstaller.
+
+### Tray after installation
+
+The tray is registered for login autostart but is not launched automatically in the same desktop session where installation finishes.
+
+Open **PdaNet L4T** from the application menu once, or log out/reboot.
 
 ## Daily use
 
-1. Android: open PdaNet+ and enable **WiFi Direct Hotspot**.
-2. Linux: join the `DIRECT-...-PdaNet` Wi-Fi network.
-3. Open the **PdaNet L4T** tray icon.
+1. Enable **WiFi Direct Hotspot** in PdaNet+.
+2. Join the `DIRECT-...-PdaNet` Wi-Fi network.
+3. Open the **PdaNet L4T** tray.
 4. Choose **Connect**.
-5. Approve the system authentication prompt.
-6. The backend checks proxy reachability, starts redsocks + dnscrypt-proxy, applies the L4T rules and performs an HTTPS test before reporting success.
+5. Approve the authentication prompt.
 
-The tray menu also provides **Disconnect**, **Change Proxy**, **Show Status**, and **Quit**.
-
-## Important networking limitation
-
-The currently tested **WiFi Direct proxy path** is confirmed for DNS, TCP and HTTPS. Raw UDP and ICMP tests on the tested Switchroot setup did **not** pass.
-
-That means:
-
-- web browsing, Git, `apt`, `curl`, `wget`, normal TCP downloads and many TCP-based applications are the main confirmed target;
-- `ping` is not a valid success test for this WiFi Direct mode;
-- some games, voice/video applications, VPNs or software that require arbitrary UDP may not work through this WiFi Direct path.
-
-**USB/TUN full-tunnel support is planned separately for v0.2** and is intentionally not mixed into the current v0.1 WiFi Direct compatibility work.
-
-### Community game/network testing
-
-Raw UDP and ICMP failed in the current test setup, but that does **not** automatically prove that every game will fail. Some games may use TCP, mixed transport, relay services or fallback paths.
-
-If you test a game or network-heavy app, please report the result — **successful reports are useful too**. Include:
-
-- game/app name;
-- whether login works;
-- whether matchmaking/session join works;
-- whether actual gameplay works;
-- whether voice chat works;
-- your Switchroot/L4T kernel, Android phone and PdaNet+ version.
-
-Open a GitHub issue and tell us what worked or failed so the compatibility list can grow from real hardware tests instead of guesses.
-
-## Why this wrapper exists
-
-The tested Switchroot kernel reports `4.9.140-l4t`. On that system:
+Connection is only reported successful after:
 
 ```text
-nft_chain_nat: unavailable
-iptables-legacy: available
+PdaNet proxy check
+        |
+proxy/DNS configuration
+        |
+proxy services started
+        |
+iptables-legacy routing applied
+        |
+HTTPS validation
+        |
+ONLINE
 ```
 
-The upstream WiFi routing path therefore could not use the expected nftables NAT support, while `iptables-legacy` NAT and `REDIRECT` worked correctly. PdaNet L4T keeps the upstream proxy/DNS services but installs an isolated `PDANET` chain in the legacy NAT table.
+The tray also provides **Disconnect**, **Change Proxy**, **Show Status**, and **Quit**.
 
-See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for the exact failures observed during testing.
+## Networking limitations
+
+Current WiFi Direct results:
+
+```text
+DNS       PASS
+TCP       PASS
+HTTPS     PASS
+Raw UDP   FAIL
+ICMP      FAIL
+```
+
+Web browsing, Git, `apt`, `curl`, `wget` and normal TCP-based applications are the main confirmed targets.
+
+`ping` is not a valid success test for this mode.
+
+Applications requiring arbitrary UDP may not work. Games should be tested individually because some use TCP, relay services or fallback transports.
+
+USB/TUN full-tunnel work is tracked separately for v0.2.
 
 ## Related projects
 
 ### xsqu1znt/PdaNetClientCLI-Linux
 
-This is the **upstream base used by PdaNet L4T**. It supplies the Linux PdaNet client, redsocks integration, dnscrypt-proxy integration, systemd units and USB support that this project builds on.
+This is the **upstream base used by PdaNet L4T**.
 
-PdaNet L4T does not vendor or claim ownership of that upstream code.
+It provides the underlying redsocks, dnscrypt-proxy, systemd and PdaNet Linux client architecture.
+
+PdaNet L4T does not vendor or claim ownership of that upstream code. The installer downloads it directly and pins the tested commit.
 
 ### wtyler2505/pdanet-linux
 
-A separate, broader Linux PdaNet project with its own reverse-engineered client, automated installer, GTK GUI, redsocks/iptables routing, WiFi/USB workflows and carrier-bypass features. Its documented target is general Debian/Ubuntu-style Linux, with Linux Mint 22.2 Cinnamon listed as a tested platform.
+`wtyler2505/pdanet-linux` is a separate Linux PdaNet project targeting general Debian/Ubuntu-style systems.
 
-The practical difference is scope and architecture:
+It is not used by PdaNet L4T, but commit `30b19c8` was evaluated on the same Switch OLED / Switchroot test system as an existing alternative.
 
-| | wtyler2505/pdanet-linux | PdaNet L4T |
-|---|---|---|
-| Main goal | General Linux PdaNet client | Switchroot / legacy L4T compatibility |
-| Base | Its own implementation | Builds on xsqu1znt/PdaNetClientCLI-Linux |
-| Documented tested platform | Linux Mint 22.2 Cinnamon | Nintendo Switch OLED / Switchroot Ubuntu Noble |
-| Legacy L4T `4.9.140-l4t` | Not documented as a tested target | Confirmed |
-| Missing `nft_chain_nat` handling | Not documented as a target | Core reason this wrapper exists |
-| `iptables-legacy` fallback | Not documented in its current README | Explicitly tested and used |
-| GUI style | Full GTK application | Small PyQt tray utility |
-| Extra focus | Carrier-bypass / stealth features | L4T compatibility and minimal integration |
+After its required `iw` command was installed, its WiFi script detected both the Switch Wi-Fi interface and the PdaNet WiFi Direct network, but its Internet verification failed on the tested setup.
 
-So the overlap is real — both can use redsocks/iptables-style transparent routing — but **PdaNet L4T specifically targets the Switchroot kernel compatibility problem that was reproduced on real Switch OLED hardware**.
+That result is specific to this Switchroot/L4T configuration and does **not** mean the project is broken or unsuitable for its documented targets.
+
+It is listed here only as a tested alternative/reference.
+
+Detailed results are recorded in [docs/TESTED.md](docs/TESTED.md).
+
+## Validation status
+
+The current `0.1.0` code has been validated from a clean **application state** using a fresh GitHub clone.
+
+Confirmed tests include installer completion, login autostart, single-instance tray behavior, Connect, Disconnect, Quit, relaunch, reconnect, standalone uninstall and package-state-safe reinstall behavior.
+
+The operating system itself was not freshly installed before validation, so a pristine-OS dependency test remains useful additional coverage.
+
+See [docs/INSTALLER-TEST-CHECKLIST.md](docs/INSTALLER-TEST-CHECKLIST.md).
 
 ## Diagnostics
+
+Run:
 
 ```bash
 bash diagnose.sh
 ```
 
-Attach the output when reporting a compatibility issue. Review it before posting publicly if you have customized anything you consider sensitive.
+Useful diagnostic data includes kernel, architecture, distro, iptables backend, `iptables-legacy` availability, proxy service versions, service state, listening ports and the pinned upstream commit.
+
+Review the output before posting it publicly.
+
+## Compatibility reports
+
+Real-hardware reports are welcome, including successful results.
+
+Useful information includes the Switch/L4T device, Linux version, kernel, Android phone, PdaNet+ version, proxy address, installation result, Connect/Disconnect result and application/game behavior.
+
+Compatibility should be based on reproduced hardware tests rather than assumptions.
 
 ## Uninstall
-
-The installer adds a standalone uninstall command, so removal still works even if you later delete the cloned GitHub source folder.
 
 Standard removal:
 
@@ -181,22 +241,43 @@ Standard removal:
 pdanet-l4t-uninstall
 ```
 
-This removes the PdaNet L4T wrapper **and the xsqu1znt PdaNet files installed by this project**, including the tray, autostart entry, proxy configuration, PdaNet systemd units, upstream checkout and routing state. Shared Ubuntu packages are kept.
+This removes the PdaNet L4T application state, routing, PdaNet-specific configuration/services and upstream files installed by this project while keeping shared Ubuntu packages.
 
-To also remove packages that were **newly added during PdaNet L4T installation**:
+To also remove dependency packages that were newly installed by PdaNet L4T:
 
 ```bash
 pdanet-l4t-uninstall --remove-packages
 ```
 
-For safety, package ownership is taken from the **actual APT transaction run by PdaNet L4T**, not from a broad before/after comparison of the whole system. Only a small allowlist of PdaNet-related packages (`adb`, `dnscrypt-proxy`, `redsocks`, `python3-pyqt5`, `kdialog`, `nftables`) can enter the removal manifest, and only when that specific APT transaction reports them as newly installed. Unrelated packages installed or downloaded by the user at the same time cannot enter the manifest. Shared/core tools such as `python3`, `git`, `curl`, `iptables` and PolicyKit are never auto-removed by this mode. Before purge, the uninstaller also performs an APT simulation and aborts if APT proposes removing additional unrecorded packages.
+Package removal is deliberately conservative.
 
-The GitHub source checkout itself is intentionally kept. If you no longer want the source after uninstalling, leave that directory and remove it manually.
+Only the following allowlisted packages can be considered installer-owned:
+
+```text
+adb
+dnscrypt-proxy
+redsocks
+python3-pyqt5
+kdialog
+nftables
+```
+
+They are eligible only when the actual PdaNet L4T APT transaction recorded them as newly installed.
+
+Shared/core tools such as `python3`, `git`, `curl`, `iptables` and PolicyKit are never automatically removed.
+
+The uninstaller also runs an APT simulation and stops if additional unrecorded packages would be removed.
+
+The GitHub source checkout is intentionally preserved.
 
 ## Attribution and licensing
 
-PdaNet L4T is an independent compatibility wrapper and is not affiliated with PdaNet/FoxFi, xsqu1znt, or wtyler2505.
+PdaNet L4T is an independent compatibility project and is not affiliated with PdaNet/FoxFi, xsqu1znt, wtyler2505, Switchroot, Nintendo or NVIDIA.
 
-The upstream xsqu1znt repository currently does not visibly include a license file in its repository root. For that reason this repository **does not vendor, copy, or relicense upstream source code**. `install.sh` clones the upstream repository directly and pins the tested commit. See [ATTRIBUTION.md](ATTRIBUTION.md).
+PdaNet+ is third-party software and remains subject to its own terms.
 
-The original code in this wrapper repository is released under the MIT License; see [LICENSE](LICENSE).
+The `xsqu1znt/PdaNetClientCLI-Linux` repository did not visibly include a license file in its repository root when this project was prepared. For that reason this repository does not copy, vendor or relicense upstream source code.
+
+Original code in this repository is released under the MIT License.
+
+See [ATTRIBUTION.md](ATTRIBUTION.md) and [LICENSE](LICENSE).
