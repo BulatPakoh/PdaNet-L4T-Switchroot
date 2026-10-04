@@ -8,7 +8,7 @@ PACKAGE_MANIFEST="$STATE_DIR/installed-packages.txt"
 INSTALLED_UNINSTALLER="$HOME/.local/bin/pdanet-l4t-uninstall"
 REMOVE_PACKAGES=0
 ASSUME_YES=0
-readonly -a REMOVABLE_PACKAGE_CANDIDATES=(adb dnscrypt-proxy redsocks python3-pyqt5 kdialog nftables openvpn)
+readonly -a REMOVABLE_PACKAGE_CANDIDATES=(adb dnscrypt-proxy redsocks python3-pyqt5 kdialog nftables openvpn libsecret-tools)
 
 is_allowed_package() {
     local candidate="$1"
@@ -171,6 +171,10 @@ sudo systemctl daemon-reload
 
 rm -f     "$HOME/.local/bin/pdanet"     "$HOME/.local/libexec/pdanet-usb-helper"     "$HOME/.local/bin/pdanet-l4t-tray"     "$HOME/.local/bin/pdanet-l4t-launch"     "$HOME/.local/bin/pdanet-l4t-gui"     "$HOME/.local/share/applications/pdanet-l4t.desktop"     "$HOME/.local/share/applications/pdanet-l4t-v2.desktop"     "$HOME/.local/share/applications/pdanet-l4t-v2-off.desktop"     "$HOME/.local/share/applications/pdanet-l4t-on.desktop"     "$HOME/.local/share/applications/pdanet-l4t-off.desktop"     "$HOME/.config/autostart/pdanet-l4t.desktop"     "$HOME/.cache/pdanet-l4t-tray.lock"
 
+if command -v secret-tool >/dev/null 2>&1; then
+    secret-tool clear service pdanet-l4t-full-tunnel slot default >/dev/null 2>&1 || true
+fi
+rm -rf "$HOME/.config/pdanet-l4t"
 rm -f "$HOME/.local/bin/__pycache__"/pdanet-l4t-tray*.pyc 2>/dev/null || true
 
 if (( REMOVE_PACKAGES == 1 )) && (( ${#owned_packages[@]} > 0 )); then
