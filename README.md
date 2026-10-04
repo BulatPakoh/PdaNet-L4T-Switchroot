@@ -189,7 +189,7 @@ To also remove packages that were **newly added during PdaNet L4T installation**
 pdanet-l4t-uninstall --remove-packages
 ```
 
-Before installation, PdaNet L4T records the packages already present on the machine. The package-removal mode only considers packages that appeared during the installer run; packages that were already part of Switchroot/Ubuntu are not placed in that removal manifest. It also performs an APT simulation first and aborts package removal if APT proposes removing additional unrecorded packages.
+For safety, the installer does **not** compare the entire package database before and after installation. It only tracks a small allowlist of PdaNet-related dependency candidates (`adb`, `dnscrypt-proxy`, `redsocks`, `python3-pyqt5`, `kdialog`, `nftables`). A candidate is recorded only if it was missing before PdaNet L4T installation and is installed afterwards. Unrelated packages installed by the user at the same time cannot enter the manifest. Shared/core tools such as `python3`, `git`, `curl`, `iptables` and PolicyKit are never auto-removed by this mode. Before purge, the uninstaller also performs an APT simulation and aborts if APT proposes removing additional unrecorded packages.
 
 The GitHub source checkout itself is intentionally kept. If you no longer want the source after uninstalling, leave that directory and remove it manually.
 
