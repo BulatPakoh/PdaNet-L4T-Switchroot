@@ -15,7 +15,7 @@ fi
 
 echo
 echo "--- Commands ---"
-for cmd in iptables iptables-legacy redsocks dnscrypt-proxy openvpn curl pkexec python3; do
+for cmd in iptables iptables-legacy redsocks dnscrypt-proxy openvpn secret-tool curl pkexec python3; do
     printf '%-18s %s\n' "$cmd" "$(command -v "$cmd" 2>/dev/null || echo MISSING)"
 done
 
@@ -25,6 +25,7 @@ iptables -V 2>/dev/null || true
 iptables-legacy -V 2>/dev/null || true
 redsocks -v 2>&1 | head -n 1 || true
 dnscrypt-proxy -version 2>&1 | head -n 2 || true
+openvpn --version 2>/dev/null | head -n 1 || true
 python3 --version 2>&1 || true
 
 echo
@@ -41,6 +42,72 @@ if [[ -r /run/pdanet-l4t.connected ]]; then
     cat /run/pdanet-l4t.connected
 else
     echo "disconnected/no state file"
+fi
+
+echo
+echo "--- Full Tunnel state ---"
+if [[ -r /run/pdanet-l4t-full-tunnel.connected ]]; then
+    cat /run/pdanet-l4t-full-tunnel.connected
+else
+    echo "offline/no Full Tunnel state file"
+fi
+
+if [[ -r /run/pdanet-l4t-openvpn.pid ]]; then
+    full_tunnel_pid="$(cat /run/pdanet-l4t-openvpn.pid 2>/dev/null || true)"
+    if [[ "$full_tunnel_pid" =~ ^[0-9]+$ ]]; then
+        ps -p "$full_tunnel_pid" -o pid=,comm=,etime= 2>/dev/null || echo "recorded OpenVPN PID is not running"
+    else
+        echo "invalid OpenVPN PID file"
+    fi
+else
+    echo "no OpenVPN PID file"
+fi
+
+echo
+echo "--- tun0 ---"
+if ip link show tun0 >/dev/null 2>&1; then
+    ip -brief addr show tun0 2>/dev/null || true
+    ip route show dev tun0 2>/dev/null | head -n 20 || true
+else
+    echo "tun0 not present"
+fi
+
+echo
+echo "--- Desktop keyring integration ---"
+if command -v secret-tool >/dev/null 2>&1; then
+    echo "secret-tool: available"
+else
+    echo "secret-tool: missing"
+fi
+if command -v busctl >/dev/null 2>&1 && busctl --user --no-pager list 2>/dev/null | grep -q 'org.freedesktop.secrets'; then
+    echo "Secret Service: available"
+else
+    echo "Secret Service: unavailable/not visible"
+fi
+if command -v busctl >/dev/null 2>&1 && busctl --user --no-pager list 2>/dev/null | grep -q 'org.kde.kwalletd'; then
+    echo "KWallet service: visible"
+else
+    echo "KWallet service: unavailable/not visible"
+fi
+
+echo
+echo "--- Full Tunnel preferences (no credentials) ---"
+PREFS="$HOME/.config/pdanet-l4t/full-tunnel.ini"
+if [[ -r "$PREFS" ]]; then
+    awk -F= '
+        /^[[:space:]]*profile[[:space:]]*=/ {
+            value=$2
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+            print "saved_profile: " (length(value) ? "yes" : "no")
+        }
+        /^[[:space:]]*auto_connect[[:space:]]*=/ {
+            value=$2
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+            print "auto_connect: " value
+        }
+    ' "$PREFS"
+else
+    echo "no saved Full Tunnel preferences"
 fi
 
 echo
