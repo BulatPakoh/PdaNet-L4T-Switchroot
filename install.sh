@@ -171,5 +171,6 @@ printf '\nInstallation complete.\n'
 printf '1. On Android: PdaNet+ -> WiFi Direct Hotspot -> ON\n'
 printf '2. Join that DIRECT-...-PdaNet Wi-Fi network in Linux.\n'
 printf '3. Open PdaNet L4T from the application menu or tray and choose Connect.\n'
-printf '4. Optional Full Tunnel mode can use a trusted OpenVPN TCP .ovpn profile from the tray.\n'\nprintf '5. Uninstall later with: pdanet-l4t-uninstall\n'
+printf '4. Optional Full Tunnel mode can use a trusted OpenVPN TCP .ovpn profile from the tray.\n'
+printf '5. Uninstall later with: pdanet-l4t-uninstall\n'
 printf '\nUpstream base: xsqu1znt/PdaNetClientCLI-Linux @ %s\n' "$UPSTREAM_COMMIT"
