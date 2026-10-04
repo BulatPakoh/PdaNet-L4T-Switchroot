@@ -39,9 +39,9 @@ On the tested Switchroot/KDE setup:
 Explicit curl --proxy       PASS
 KDE/KIO proxy access        PASS
 
-Normal curl via KDE proxy   FAIL - DNS resolution
-Chrome via KDE proxy        FAIL - DNS resolution
-Chrome via tested PAC path  FAIL - no Internet
+Normal curl via KDE proxy   FAIL
+Chromium via KDE proxy      FAIL
+Chromium via tested PAC path FAIL
 ```
 
 These results are specific to the tested system and do not mean KDE proxy support or PdaNet proxying is generally broken.
@@ -64,7 +64,7 @@ PdaNet HTTP proxy
 Android phone
 ```
 
-With PdaNet L4T enabled on the same system, normal `curl` and Chrome worked without per-application proxy configuration.
+With PdaNet L4T enabled on the same system, normal `curl` and Chromium worked without per-application proxy configuration.
 
 ## Why this compatibility layer exists
 
