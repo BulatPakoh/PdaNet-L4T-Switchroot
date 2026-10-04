@@ -7,9 +7,12 @@ BASE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="$HOME/.local/share/pdanet-l4t"
 UPSTREAM_DIR="$STATE_DIR/upstream/PdaNetClientCLI-Linux"
 PACKAGE_MANIFEST="$STATE_DIR/installed-packages.txt"
-PACKAGE_MISSING_BEFORE="$STATE_DIR/packages-missing-before.txt"
 PACKAGE_PREVIOUS="$STATE_DIR/installed-packages.previous"
 readonly -a REMOVABLE_PACKAGE_CANDIDATES=(adb dnscrypt-proxy redsocks python3-pyqt5 kdialog nftables)
+readonly -a REQUIRED_APT_PACKAGES=(
+    adb bash coreutils curl dnscrypt-proxy gawk git grep iproute2 iptables
+    kdialog libc-bin nftables policykit-1 python3 python3-pyqt5 redsocks systemd util-linux
+)
 
 info() { printf '==> %s\n' "$*"; }
 ok() { printf '  OK  %s\n' "$*"; }
@@ -19,23 +22,38 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 command -v apt-get >/dev/null 2>&1 || die "This release currently targets Debian/Ubuntu/Switchroot systems using APT."
 command -v sudo >/dev/null 2>&1 || die "sudo is required."
 
-info "Recording removable PdaNet dependency candidates that are missing before installation"
+info "Preparing package ownership tracking"
 mkdir -p "$STATE_DIR/upstream"
 if [[ -f "$PACKAGE_MANIFEST" ]]; then
     cp -f "$PACKAGE_MANIFEST" "$PACKAGE_PREVIOUS"
 else
     : > "$PACKAGE_PREVIOUS"
 fi
-: > "$PACKAGE_MISSING_BEFORE"
-for package in "${REMOVABLE_PACKAGE_CANDIDATES[@]}"; do
-    if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed'; then
-        printf '%s\n' "$package" >> "$PACKAGE_MISSING_BEFORE"
-    fi
-done
 
-info "Installing wrapper dependencies"
+info "Installing required PdaNet L4T packages"
 sudo apt-get update
-sudo apt-get install -y git curl iptables python3 python3-pyqt5 kdialog policykit-1
+apt_log="$(mktemp)"
+sudo env LC_ALL=C apt-get install -y "${REQUIRED_APT_PACKAGES[@]}" 2>&1 | tee "$apt_log"
+
+info "Recording only packages newly installed by this APT transaction"
+package_new="$(mktemp)"
+: > "$package_new"
+while IFS= read -r package; do
+    package="${package%%:*}"
+    case "$package" in
+        adb|dnscrypt-proxy|redsocks|python3-pyqt5|kdialog|nftables)
+            printf '%s\n' "$package" >> "$package_new"
+            ;;
+    esac
+done < <(
+    awk '
+        $0 == "The following NEW packages will be installed:" { capture=1; next }
+        capture && ($0 ~ /^The following / || $0 ~ /^[0-9]+ upgraded,/) { capture=0 }
+        capture { for (i=1; i<=NF; i++) print $i }
+    ' "$apt_log"
+)
+cat "$PACKAGE_PREVIOUS" "$package_new" | sed '/^[[:space:]]*$/d' | LC_ALL=C sort -u > "$PACKAGE_MANIFEST"
+rm -f "$apt_log" "$package_new" "$PACKAGE_PREVIOUS"
 
 if [[ -d "$UPSTREAM_DIR/.git" ]]; then
     info "Refreshing xsqu1znt/PdaNetClientCLI-Linux"
@@ -51,24 +69,12 @@ actual_commit="$(git -C "$UPSTREAM_DIR" rev-parse HEAD)"
 ok "Pinned upstream commit: $actual_commit"
 
 info "Running the upstream installer"
-bash "$UPSTREAM_DIR/install.sh"
+bash "$UPSTREAM_DIR/install.sh" --skip-packages
 
 redsocks_bin="$(command -v redsocks || true)"
 dnscrypt_bin="$(command -v dnscrypt-proxy || true)"
 [[ -n "$redsocks_bin" ]] || die "redsocks executable not found after upstream installation."
 [[ -n "$dnscrypt_bin" ]] || die "dnscrypt-proxy executable not found after upstream installation."
-
-info "Recording safe removable packages added by this installer"
-package_new="$(mktemp)"
-: > "$package_new"
-while IFS= read -r package; do
-    [[ -n "$package" ]] || continue
-    if dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed'; then
-        printf '%s\n' "$package" >> "$package_new"
-    fi
-done < "$PACKAGE_MISSING_BEFORE"
-cat "$PACKAGE_PREVIOUS" "$package_new" | sed '/^[[:space:]]*$/d' | LC_ALL=C sort -u > "$PACKAGE_MANIFEST"
-rm -f "$package_new" "$PACKAGE_MISSING_BEFORE" "$PACKAGE_PREVIOUS"
 
 info "Applying L4T/Noble service-path compatibility"
 sudo sed -Ei "s|^ExecStart=.*redsocks.*|ExecStart=${redsocks_bin} -c /etc/redsocks-pdanet.conf|" /etc/systemd/system/pdanet-redsocks.service
