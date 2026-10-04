@@ -173,17 +173,25 @@ Attach the output when reporting a compatibility issue. Review it before posting
 
 ## Uninstall
 
-```bash
-bash uninstall.sh
-```
+The installer adds a standalone uninstall command, so removal still works even if you later delete the cloned GitHub source folder.
 
-To also remove this wrapper's saved proxy configuration:
+Standard removal:
 
 ```bash
-bash uninstall.sh --purge-config
+pdanet-l4t-uninstall
 ```
 
-The uninstaller intentionally leaves the separately installed **xsqu1znt/PdaNetClientCLI-Linux** base in place.
+This removes the PdaNet L4T wrapper **and the xsqu1znt PdaNet files installed by this project**, including the tray, autostart entry, proxy configuration, PdaNet systemd units, upstream checkout and routing state. Shared Ubuntu packages are kept.
+
+To also remove packages that were **newly added during PdaNet L4T installation**:
+
+```bash
+pdanet-l4t-uninstall --remove-packages
+```
+
+Before installation, PdaNet L4T records the packages already present on the machine. The package-removal mode only considers packages that appeared during the installer run; packages that were already part of Switchroot/Ubuntu are not placed in that removal manifest. It also performs an APT simulation first and aborts package removal if APT proposes removing additional unrecorded packages.
+
+The GitHub source checkout itself is intentionally kept. If you no longer want the source after uninstalling, leave that directory and remove it manually.
 
 ## Attribution and licensing
 
