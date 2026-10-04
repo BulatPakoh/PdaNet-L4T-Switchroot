@@ -394,29 +394,107 @@ def connect_pdanet():
     global auto_attempted_for_base, auto_suppressed_until_base_disconnect
 
     ip, port = read_config()
+    prefs = load_full_tunnel_prefs()
+    profile = prefs["profile"]
+    credentials = None
+    combined = False
+    auth_path = None
+
+    if (
+        prefs["auto_connect"]
+        and profile
+        and os.path.isfile(profile)
+    ):
+        credentials = load_credentials()
+        combined = credentials is not None
+
     tray.showMessage(
         "PdaNet L4T",
         f"Connecting through {ip}:{port}...",
         QSystemTrayIcon.Information,
         2000,
     )
-    result = run_command(["pkexec", BACKEND, "on", ip, port])
-    auto_attempted_for_base = False
+
+    try:
+        if combined:
+            runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
+            if not runtime_dir or not os.path.isdir(runtime_dir):
+                runtime_dir = os.path.expanduser("~/.cache")
+                os.makedirs(runtime_dir, exist_ok=True)
+
+            fd, auth_path = tempfile.mkstemp(
+                prefix="pdanet-l4t-auth-",
+                dir=runtime_dir,
+                text=True,
+            )
+            os.fchmod(fd, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(credentials[0] + "\n" + credentials[1] + "\n")
+
+            result = run_command(
+                [
+                    "pkexec",
+                    BACKEND,
+                    "on-with-full-tunnel",
+                    ip,
+                    port,
+                    profile,
+                    auth_path,
+                ]
+            )
+            auto_attempted_for_base = True
+        else:
+            result = run_command(["pkexec", BACKEND, "on", ip, port])
+            auto_attempted_for_base = bool(prefs["auto_connect"])
+    finally:
+        if auth_path:
+            try:
+                os.remove(auth_path)
+            except OSError:
+                pass
+
     auto_suppressed_until_base_disconnect = False
     update_status()
+
     if result.returncode == 0:
-        tray.showMessage(
-            "PdaNet L4T",
-            f"Internet connected\n{ip}:{port}",
-            QSystemTrayIcon.Information,
-            4000,
-        )
+        if combined:
+            tray.showMessage(
+                "PdaNet L4T",
+                "Internet + Full Tunnel connected",
+                QSystemTrayIcon.Information,
+                4000,
+            )
+        else:
+            tray.showMessage(
+                "PdaNet L4T",
+                f"Internet connected\n{ip}:{port}",
+                QSystemTrayIcon.Information,
+                4000,
+            )
+            if prefs["auto_connect"]:
+                reason = "saved OpenVPN profile is missing"
+                if profile and os.path.isfile(profile) and credentials is None:
+                    reason = "saved keyring credentials are unavailable"
+                tray.showMessage(
+                    "PdaNet L4T",
+                    f"Full Tunnel auto-connect skipped: {reason}.",
+                    QSystemTrayIcon.Warning,
+                    5000,
+                )
     else:
-        QMessageBox.critical(
-            None,
-            "PdaNet L4T Error",
-            result.stdout or "Connection failed.",
-        )
+        if is_connected():
+            QMessageBox.warning(
+                None,
+                "PdaNet L4T Full Tunnel",
+                "Standard PdaNet connected, but Full Tunnel failed.\n\n"
+                + (result.stdout or "Full Tunnel connection failed."),
+            )
+        else:
+            QMessageBox.critical(
+                None,
+                "PdaNet L4T Error",
+                result.stdout or "Connection failed.",
+            )
 
 
 def disconnect_pdanet():
