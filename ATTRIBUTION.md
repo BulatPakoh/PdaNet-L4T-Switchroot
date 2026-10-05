@@ -7,7 +7,7 @@ PdaNet L4T depends on the public GitHub project:
 - Project: `xsqu1znt/PdaNetClientCLI-Linux`
 - Tested commit: `f20ae0e679f26d1703f6a99ffc1978fc7c7dd84f`
 
-The upstream project supplies the PdaNet Linux Wi-Fi/USB client, including the redsocks and dnscrypt-proxy integration that this wrapper relies on.
+The upstream project supplies the PdaNet Linux client architecture, including the redsocks and dnscrypt-proxy integration that this wrapper relies on.
 
 PdaNet L4T adds a legacy-L4T routing compatibility layer, configurable proxy handling, installation fixes for the tested Switchroot Noble environment, a system-tray frontend, and an optional OpenVPN TCP Full Tunnel integration.
 
