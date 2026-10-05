@@ -220,8 +220,6 @@ With the optional OpenVPN TCP Full Tunnel active, Discord voice passed through `
 
 Games and other UDP-heavy applications still require individual testing.
 
-Native PdaNet USB/TUN work remains tracked separately for v0.2. That roadmap item is distinct from the OpenVPN TCP Full Tunnel introduced in v0.1.1.
-
 ## Related projects
 
 ### xsqu1znt/PdaNetClientCLI-Linux
