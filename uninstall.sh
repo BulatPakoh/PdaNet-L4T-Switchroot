@@ -131,12 +131,11 @@ if [[ -x /usr/local/sbin/pdanet-l4t ]]; then
     sudo /usr/local/sbin/pdanet-l4t off 2>/dev/null || true
 fi
 if [[ -x "$HOME/.local/bin/pdanet" ]]; then
-    sudo "$HOME/.local/bin/pdanet" usb off 2>/dev/null || true
     sudo "$HOME/.local/bin/pdanet" off 2>/dev/null || true
 fi
 
-sudo systemctl stop pdanet-redsocks pdanet-dnscrypt pdanet-usb-dnscrypt 2>/dev/null || true
-sudo systemctl disable pdanet-redsocks pdanet-dnscrypt pdanet-usb-dnscrypt 2>/dev/null || true
+sudo systemctl stop pdanet-redsocks pdanet-dnscrypt 2>/dev/null || true
+sudo systemctl disable pdanet-redsocks pdanet-dnscrypt 2>/dev/null || true
 
 echo "==> Removing PdaNet routing state"
 if command -v iptables-legacy >/dev/null 2>&1; then
@@ -161,15 +160,14 @@ if command -v nft >/dev/null 2>&1; then
     sudo nft delete table inet pdanet 2>/dev/null || true
 fi
 
-sudo rm -rf /run/pdanet-l4t.connected /run/pdanet-l4t-full-tunnel.connected /run/pdanet-l4t-openvpn.pid /run/pdanet-l4t-openvpn.log /run/pdanet-l4t-full-tunnel.ovpn /run/pdanet-l4t-openvpn.auth /run/pdanet-tproxy /run/pdanet-usb
-sudo rm -f /run/pdanet-usb-helper.log
+sudo rm -rf /run/pdanet-l4t.connected /run/pdanet-l4t-full-tunnel.connected /run/pdanet-l4t-openvpn.pid /run/pdanet-l4t-openvpn.log /run/pdanet-l4t-full-tunnel.ovpn /run/pdanet-l4t-openvpn.auth /run/pdanet-tproxy
 
 echo "==> Removing PdaNet L4T and upstream xsqu1znt files"
-sudo rm -f /usr/local/sbin/pdanet-l4t /usr/local/sbin/pdanet-l4t-v2
-sudo rm -f     /etc/pdanet-l4t.conf     /etc/nftables-pdanet.nft     /etc/redsocks-pdanet.conf     /etc/dnscrypt-proxy-pdanet.toml     /etc/dnscrypt-proxy-pdanet-usb.toml     /etc/systemd/system/pdanet-redsocks.service     /etc/systemd/system/pdanet-dnscrypt.service     /etc/systemd/system/pdanet-usb-dnscrypt.service
+sudo rm -f /usr/local/sbin/pdanet-l4t
+sudo rm -f     /etc/pdanet-l4t.conf     /etc/nftables-pdanet.nft     /etc/redsocks-pdanet.conf     /etc/dnscrypt-proxy-pdanet.toml     /etc/systemd/system/pdanet-redsocks.service     /etc/systemd/system/pdanet-dnscrypt.service
 sudo systemctl daemon-reload
 
-rm -f     "$HOME/.local/bin/pdanet"     "$HOME/.local/libexec/pdanet-usb-helper"     "$HOME/.local/bin/pdanet-l4t-tray"     "$HOME/.local/bin/pdanet-l4t-launch"     "$HOME/.local/bin/pdanet-l4t-gui"     "$HOME/.local/share/applications/pdanet-l4t.desktop"     "$HOME/.local/share/applications/pdanet-l4t-v2.desktop"     "$HOME/.local/share/applications/pdanet-l4t-v2-off.desktop"     "$HOME/.local/share/applications/pdanet-l4t-on.desktop"     "$HOME/.local/share/applications/pdanet-l4t-off.desktop"     "$HOME/.config/autostart/pdanet-l4t.desktop"     "$HOME/.cache/pdanet-l4t-tray.lock"
+rm -f     "$HOME/.local/bin/pdanet"     "$HOME/.local/bin/pdanet-l4t-tray"     "$HOME/.local/bin/pdanet-l4t-launch"     "$HOME/.local/bin/pdanet-l4t-gui"     "$HOME/.local/share/applications/pdanet-l4t.desktop"     "$HOME/.local/share/applications/pdanet-l4t-on.desktop"     "$HOME/.local/share/applications/pdanet-l4t-off.desktop"     "$HOME/.config/autostart/pdanet-l4t.desktop"     "$HOME/.cache/pdanet-l4t-tray.lock"
 
 if command -v secret-tool >/dev/null 2>&1; then
     secret-tool clear service pdanet-l4t-full-tunnel slot default >/dev/null 2>&1 || true

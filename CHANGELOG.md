@@ -49,7 +49,3 @@
 ### Test-scope note
 
 The v0.1.0 clean-install validation used a clean **application** state rather than a freshly reinstalled OS. Ubuntu dependency packages from earlier development were still installed. A pristine-OS dependency test remains useful additional coverage.
-
-### Roadmap
-
-- USB/TUN full-tunnel work is tracked separately for v0.2 and is not mixed into the v0.1 WiFi Direct version.
