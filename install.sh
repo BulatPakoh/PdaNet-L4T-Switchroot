@@ -151,8 +151,6 @@ Terminal=false
 X-GNOME-Autostart-enabled=true
 DESKTOP
 
-rm -f "$HOME/.local/share/applications/pdanet-l4t-v2.desktop"
-rm -f "$HOME/.local/share/applications/pdanet-l4t-v2-off.desktop"
 rm -f "$HOME/.local/share/applications/pdanet-l4t-on.desktop"
 rm -f "$HOME/.local/share/applications/pdanet-l4t-off.desktop"
 
