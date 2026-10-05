@@ -163,8 +163,6 @@ Dengan OpenVPN TCP Full Tunnel aktif, Discord voice berjaya melalui `tun0`. Mema
 
 Game dan aplikasi UDP-heavy masih perlu diuji satu-satu.
 
-Native PdaNet USB/TUN masih dirancang berasingan untuk v0.2. Roadmap itu berbeza daripada OpenVPN TCP Full Tunnel dalam v0.1.1.
-
 ## Related projects
 
 ### xsqu1znt/PdaNetClientCLI-Linux
